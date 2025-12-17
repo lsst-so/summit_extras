@@ -206,23 +206,33 @@ def makeDofPredictedFWHMPlot(
 
     # ----- Zernike comparison at corners -----
     # -----------------------------------------
+    zernikesMeasured = wavefrontData["zksMeasured"]
+    numSensors = zernikesMeasured.shape[0]
+
+    # Check if we are using paired/unpaired and provide enough axes
+    if numSensors <= 4:
+        numAxes = 2
+    else:
+        numAxes = 3
+
     gsTop = gridspec.GridSpecFromSubplotSpec(
-        2,
-        2,
+        numAxes,
+        numAxes,
         subplot_spec=gsTopSplit[1],
         wspace=0.05,
         hspace=0.1,
     )
 
-    axes = np.empty((2, 2), dtype=object)
-    for i in range(2):
-        for j in range(2):
+    axes = np.empty((numAxes, numAxes), dtype=object)
+    for i in range(numAxes):
+        for j in range(numAxes):
             if i == 0 and j == 0:
                 axes[i, j] = fig.add_subplot(gsTop[i, j])
+            elif i * numAxes + j >= numSensors:
+                continue
             else:
                 axes[i, j] = fig.add_subplot(gsTop[i, j], sharex=axes[0, 0], sharey=axes[0, 0])
 
-    zernikesMeasured = wavefrontData["zksMeasured"]
     zernikesEstimated = wavefrontData["zksEstimated"][:, : zernikesMeasured.shape[1]]
     zkIds = np.arange(zMin, zernikesMeasured.shape[1])
     x = np.arange(len(zkIds))
@@ -259,13 +269,13 @@ def makeDofPredictedFWHMPlot(
         tickPos = [i - zMin for i in tickIds if i in zkIds]
         tickIdsPresent = [i for i in tickIds if i in zkIds]
         ax.set_xticks(tickPos)
-        if sensor >= 2:
+        if sensor >= (numAxes * numAxes - numAxes):
             ax.set_xlabel("Noll index", fontsize=11)
             ax.set_xticklabels(tickIdsPresent)
         else:
             ax.tick_params(axis="x", labelbottom=False)
 
-        if sensor % 2 == 0:  # left column
+        if sensor % numAxes == 0:  # left column
             ax.set_ylabel("(um)", fontsize=11)
         else:  # right column
             ax.tick_params(axis="y", labelleft=False)
@@ -275,7 +285,7 @@ def makeDofPredictedFWHMPlot(
         for z in np.arange(zMin, zernikesMeasured.shape[1]):
             ax.axvline(z - zMin, color="gray", linestyle="--", linewidth=0.5, alpha=0.4)
 
-        if sensor == 1:
+        if sensor == numAxes - 1:
             ax.legend(
                 loc="lower center",
                 bbox_to_anchor=(0.58, 1.03),  # centered above this axis

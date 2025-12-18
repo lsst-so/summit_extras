@@ -139,6 +139,11 @@ def makeDofPredictedFWHMPlot(
         The maximum value for ellipticity color scaling.
     fwhmRange : `float`, optional
         The range of FWHM values for color scaling.
+
+    Raises
+    ------
+    ValueError
+        If more than four corner sensors are found in the wavefront data.
     """
     fig = make_figure(figsize=(40, 25))
 
@@ -223,6 +228,11 @@ def makeDofPredictedFWHMPlot(
                 axes[i, j] = fig.add_subplot(gsTop[i, j], sharex=axes[0, 0], sharey=axes[0, 0])
 
     zernikesMeasured = wavefrontData["zksMeasured"]
+    if zernikesMeasured.shape[0] > 4:
+        raise ValueError(
+            "More than four corner sensors found in wavefront data. "
+            "Unpaired mode is not currently supported for the DOF predicted FWHM plot."
+        )
     zernikesEstimated = wavefrontData["zksEstimated"][:, : zernikesMeasured.shape[1]]
     zkIds = np.arange(zMin, zernikesMeasured.shape[1])
     x = np.arange(len(zkIds))

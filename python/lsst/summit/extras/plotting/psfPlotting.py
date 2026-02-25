@@ -941,6 +941,7 @@ def makeAzElPlot(
     axs: npt.NDArray[np.object_],
     table: Table,
     camera: Camera,
+    filter: str,
     maxPointsPerDetector: int = 60,
     minPointsPerDetector: int = 5,
     saveAs: str = "",
@@ -971,6 +972,8 @@ def makeAzElPlot(
         The array of axes objects to plot on.
     table : `numpy.ndarray`
         The table containing the data to be plotted.
+    filter : `str`
+        The filter name to include in the plot title.
     camera : `list`
         The list of camera detector objects.
     maxPointsPerDetector : `int`, optional
@@ -1007,7 +1010,7 @@ def makeAzElPlot(
     dayObs = visitId // 100000
     seqNum = visitId % 100000
     fig.suptitle(
-        f"dayObs={dayObs} seqNum={seqNum}",
+        f"dayObs={dayObs} seqNum={seqNum}, filter={filter}",
         fontsize=12,
         y=0.95,
     )

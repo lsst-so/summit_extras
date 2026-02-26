@@ -261,6 +261,7 @@ def fullestFixedInterval(
     best_idx = np.argmax(counts)
     return intervals[best_idx], intervals[best_idx] + intervalWidth
 
+
 def makeTableFromSourceCatalogs(icSrcs: dict[int, SourceCatalog], visitInfo: VisitInfo) -> Table:
     """Extract the shapes from the source catalogs into an astropy table.
 
@@ -332,8 +333,10 @@ def makeTableFromSourceCatalogs(icSrcs: dict[int, SourceCatalog], visitInfo: Vis
     table["y"] = table["base_FPPosition_y"]
 
     rtp = (
-        visitInfo.boresightParAngle - visitInfo.boresightRotAngle - (np.pi / 2 * radians)
-    ).wrapNear(0*radians).asRadians()
+        (visitInfo.boresightParAngle - visitInfo.boresightRotAngle - (np.pi / 2 * radians))
+        .wrapNear(0 * radians)
+        .asRadians()
+    )
     rsp = visitInfo.boresightRotAngle.wrap().asRadians()
 
     # For az/el and equitorial, represent the field in degrees instead of mm.
@@ -847,8 +850,8 @@ def makeFocalPlanePlot(
         points in the table is greater than this value, a random subset of
         points will be plotted.
     maxQuiverPerDetector : `int`, optional
-        The maximum number of quiver arrows per detector to plot. If the number of
-        arrows in the table is greater than this value, a random subset of
+        The maximum number of quiver arrows per detector to plot. If the number
+        of arrows in the table is greater than this value, a random subset of
         arrows will be plotted.
     saveAs : `str`, optional
         The file path to save the figure.
@@ -859,7 +862,7 @@ def makeFocalPlanePlot(
     if axs.shape[0] > 2:
         raise TypeError("axs should have shape (2, 3) for focal plane plot.")
 
-    band = band[0] # "i_39" -> "i" for example
+    band = band[0]  # "i_39" -> "i" for example
 
     plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector)
 
@@ -877,14 +880,16 @@ def makeFocalPlanePlot(
     visitId = table.meta["LSST BUTLER DATAID VISIT"]
     dayObs = visitId // 100000
     seqNum = visitId % 100000
-    title = "   ".join([
-        f"day={dayObs}",
-        f"seq={seqNum}",
-        "  ",
-        f"az={table.meta['az']:.1f}°",
-        f"el={table.meta['el']:.1f}°",
-        f"rtp={np.rad2deg(table.meta['rotTelPos']):.1f}°",
-    ])
+    title = "   ".join(
+        [
+            f"day={dayObs}",
+            f"seq={seqNum}",
+            "  ",
+            f"az={table.meta['az']:.1f}°",
+            f"el={table.meta['el']:.1f}°",
+            f"rtp={np.rad2deg(table.meta['rotTelPos']):.1f}°",
+        ]
+    )
     fig.suptitle(title, fontsize=12, x=0.4, y=0.95, font="monospace")
     band_colors = {
         "u": "#85b7ff",
@@ -904,13 +909,7 @@ def makeFocalPlanePlot(
             zorder=5,
         )
     )
-    fig.text(
-        0.89, 0.9375,
-        f"band={band}",
-        ha="center", va="center",
-        fontsize=12, color="k",
-        zorder=10
-    )
+    fig.text(0.89, 0.9375, f"band={band}", ha="center", va="center", fontsize=12, color="k", zorder=10)
 
     rot = np.eye(2)
     if oneRaftOnly:
@@ -932,12 +931,7 @@ def makeFocalPlanePlot(
     xyAngle = 0.0
     neAngle = -table.meta["rotSkyPos"] + np.pi / 2
 
-    addRoses(
-        fig=fig,
-        azelAngle=azelAngle,
-        xyAngle=xyAngle,
-        neAngle=neAngle
-    )
+    addRoses(fig=fig, azelAngle=azelAngle, xyAngle=xyAngle, neAngle=neAngle)
 
     if saveAs:
         fig.savefig(saveAs)
@@ -988,8 +982,8 @@ def makeEquatorialPlot(
         points in the table is greater than this value, a random subset of
         points will be plotted.
     maxQuiverPerDetector : `int`, optional
-        The maximum number of quiver arrows per detector to plot. If the number of
-        arrows in the table is greater than this value, a random subset of
+        The maximum number of quiver arrows per detector to plot. If the number
+        of arrows in the table is greater than this value, a random subset of
         arrows will be plotted.
     saveAs : `str`, optional
         The file path to save the figure.
@@ -1000,7 +994,7 @@ def makeEquatorialPlot(
     if axs.shape[0] > 2:
         raise TypeError("axs should have shape (2, 3) for equatorial plot.")
 
-    band = band[0] # "i_39" -> "i" for example
+    band = band[0]  # "i_39" -> "i" for example
 
     plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector, prefix="nw_")
 
@@ -1018,14 +1012,16 @@ def makeEquatorialPlot(
     visitId = table.meta["LSST BUTLER DATAID VISIT"]
     dayObs = visitId // 100000
     seqNum = visitId % 100000
-    title = "   ".join([
-        f"day={dayObs}",
-        f"seq={seqNum}",
-        "  ",
-        f"az={table.meta['az']:.1f}°",
-        f"el={table.meta['el']:.1f}°",
-        f"rtp={np.rad2deg(table.meta['rotTelPos']):.1f}°",
-    ])
+    title = "   ".join(
+        [
+            f"day={dayObs}",
+            f"seq={seqNum}",
+            "  ",
+            f"az={table.meta['az']:.1f}°",
+            f"el={table.meta['el']:.1f}°",
+            f"rtp={np.rad2deg(table.meta['rotTelPos']):.1f}°",
+        ]
+    )
     fig.suptitle(title, fontsize=12, x=0.4, y=0.95, font="monospace")
     band_colors = {
         "u": "#85b7ff",
@@ -1045,13 +1041,7 @@ def makeEquatorialPlot(
             zorder=5,
         )
     )
-    fig.text(
-        0.89, 0.9375,
-        f"band={band}",
-        ha="center", va="center",
-        fontsize=12, color="k",
-        zorder=10
-    )
+    fig.text(0.89, 0.9375, f"band={band}", ha="center", va="center", fontsize=12, color="k", zorder=10)
 
     rot = table.meta["nwRot"]
     if oneRaftOnly:
@@ -1079,12 +1069,7 @@ def makeEquatorialPlot(
     xyAngle = table.meta["rotSkyPos"]
     neAngle = np.pi / 2
 
-    addRoses(
-        fig=fig,
-        azelAngle=azelAngle,
-        xyAngle=xyAngle,
-        neAngle=neAngle
-    )
+    addRoses(fig=fig, azelAngle=azelAngle, xyAngle=xyAngle, neAngle=neAngle)
 
     if saveAs:
         fig.savefig(saveAs)
@@ -1137,8 +1122,8 @@ def makeAzElPlot(
         points in the table is greater than this value, a random subset of
         points will be plotted.
     maxQuiverPerDetector : `int`, optional
-        The maximum number of quiver arrows per detector to plot. If the number of
-        arrows in the table is greater than this value, a random subset of
+        The maximum number of quiver arrows per detector to plot. If the number
+        of arrows in the table is greater than this value, a random subset of
         arrows will be plotted.
     saveAs : `str`, optional
         The file path to save the figure.
@@ -1149,7 +1134,7 @@ def makeAzElPlot(
     if "kurtosis" in table.columns and axs.shape[0] > 2:
         plotHigherOrderMomentsData(axs[2, :], table, prefix="aa_")
 
-    band = band[0] # "i_39" -> "i" for example
+    band = band[0]  # "i_39" -> "i" for example
 
     plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector, prefix="aa_")
 
@@ -1167,14 +1152,16 @@ def makeAzElPlot(
     visitId = table.meta["LSST BUTLER DATAID VISIT"]
     dayObs = visitId // 100000
     seqNum = visitId % 100000
-    title = "   ".join([
-        f"day={dayObs}",
-        f"seq={seqNum}",
-        "  ",
-        f"az={table.meta['az']:.1f}°",
-        f"el={table.meta['el']:.1f}°",
-        f"rtp={np.rad2deg(table.meta['rotTelPos']):.1f}°",
-    ])
+    title = "   ".join(
+        [
+            f"day={dayObs}",
+            f"seq={seqNum}",
+            "  ",
+            f"az={table.meta['az']:.1f}°",
+            f"el={table.meta['el']:.1f}°",
+            f"rtp={np.rad2deg(table.meta['rotTelPos']):.1f}°",
+        ]
+    )
     fig.suptitle(title, fontsize=12, x=0.4, y=0.95, font="monospace")
     band_colors = {
         "u": "#85b7ff",
@@ -1194,13 +1181,7 @@ def makeAzElPlot(
             zorder=5,
         )
     )
-    fig.text(
-        0.89, 0.9375,
-        f"band={band}",
-        ha="center", va="center",
-        fontsize=12, color="k",
-        zorder=10
-    )
+    fig.text(0.89, 0.9375, f"band={band}", ha="center", va="center", fontsize=12, color="k", zorder=10)
 
     rot = table.meta["aaRot"]
     if oneRaftOnly:
@@ -1224,12 +1205,7 @@ def makeAzElPlot(
     xyAngle = -np.pi / 2 - table.meta["rotTelPos"]
     neAngle = -table.meta["rotTelPos"] - table.meta["rotSkyPos"]
 
-    addRoses(
-        fig=fig,
-        azelAngle=azelAngle,
-        xyAngle=xyAngle,
-        neAngle=neAngle
-    )
+    addRoses(fig=fig, azelAngle=azelAngle, xyAngle=xyAngle, neAngle=neAngle)
 
     if saveAs:
         fig.savefig(saveAs)

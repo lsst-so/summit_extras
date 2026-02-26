@@ -299,23 +299,26 @@ def makeTableFromSourceCatalogs(icSrcs: dict[int, SourceCatalog], visitInfo: Vis
     table["x"] = table["base_FPPosition_x"]
     table["y"] = table["base_FPPosition_y"]
 
-    table.meta["rotTelPos"] = (
+    rtp = (
         visitInfo.boresightParAngle - visitInfo.boresightRotAngle - (np.pi / 2 * radians)
-    ).asRadians()
-    table.meta["rotSkyPos"] = visitInfo.boresightRotAngle.asRadians()
+    ).wrapNear(0*radians).asRadians()
+    rsp = visitInfo.boresightRotAngle.wrap().asRadians()
 
     # For az/el and equitorial, represent the field in degrees instead of mm.
-    rtp = table.meta["rotTelPos"]
     srtp, crtp = np.sin(rtp), np.cos(rtp)
     aaRot = np.array([[crtp, srtp], [-srtp, crtp]]) @ np.array([[0, 1], [1, 0]]) @ np.array([[-1, 0], [0, 1]])
     table = extendTable(table, aaRot, "aa", MM_TO_DEG)
     table.meta["aaRot"] = aaRot
 
-    rsp = table.meta["rotSkyPos"]
     srsp, crsp = np.sin(rsp), np.cos(rsp)
     nwRot = np.array([[crsp, -srsp], [srsp, crsp]])
     table = extendTable(table, nwRot, "nw", MM_TO_DEG)
     table.meta["nwRot"] = nwRot
+
+    table.meta["rotTelPos"] = rtp
+    table.meta["rotSkyPos"] = rsp
+    table.meta["az"] = visitInfo.boresightAzAlt.getLongitude().asDegrees()
+    table.meta["el"] = visitInfo.boresightAzAlt.getLatitude().asDegrees()
 
     return table
 
@@ -941,7 +944,7 @@ def makeAzElPlot(
     axs: npt.NDArray[np.object_],
     table: Table,
     camera: Camera,
-    filter: str,
+    band: str,
     maxPointsPerDetector: int = 60,
     minPointsPerDetector: int = 5,
     saveAs: str = "",
@@ -976,6 +979,8 @@ def makeAzElPlot(
         The filter name to include in the plot title.
     camera : `list`
         The list of camera detector objects.
+    band : `str`
+        Name of the current filter band.
     maxPointsPerDetector : `int`, optional
         The maximum number of points per detector to plot. If the number of
         points in the table is greater than this value, a random subset of
@@ -1009,10 +1014,39 @@ def makeAzElPlot(
     visitId = table.meta["LSST BUTLER DATAID VISIT"]
     dayObs = visitId // 100000
     seqNum = visitId % 100000
-    fig.suptitle(
-        f"dayObs={dayObs} seqNum={seqNum}, filter={filter}",
-        fontsize=12,
-        y=0.95,
+    title = "   ".join([
+        f"day={dayObs}",
+        f"seq={seqNum}",
+        "  ",
+        f"az={table.meta['az']:.1f}°",
+        f"el={table.meta['el']:.1f}°",
+        f"rtp={np.rad2deg(table.meta['rotTelPos']):.1f}°",
+    ])
+    fig.suptitle(title, fontsize=12, x=0.4, y=0.95, font="monospace")
+    band_colors = {
+        "u": "#85b7ff",
+        "g": "#a4dfaf",
+        "r": "#e28d7e",
+        "i": "#ffe07e",
+        "z": "#f89fd0",
+        "y": "#ad7f7f",
+    }
+    fig.patches.append(
+        Polygon(
+            [(0.85, 0.92), (0.93, 0.92), (0.93, 0.96), (0.85, 0.96)],
+            transform=fig.transFigure,
+            facecolor=band_colors[band],
+            edgecolor="k",
+            alpha=0.3,
+            zorder=5,
+        )
+    )
+    fig.text(
+        0.89, 0.9375,
+        f"band={band}",
+        ha="center", va="center",
+        fontsize=12, color="k",
+        zorder=10
     )
 
     rot = table.meta["aaRot"]

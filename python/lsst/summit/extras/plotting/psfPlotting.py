@@ -805,7 +805,9 @@ def makeFocalPlanePlot(
     axs: npt.NDArray[np.object_],
     table: Table,
     camera: Camera,
-    maxPointsPerDetector: int = 5,
+    band: str,
+    maxPointsPerDetector: int = 60,
+    maxQuiverPerDetector: int = 5,
     saveAs: str = "",
 ) -> None:
     """Plot the PSFs in focal plane (detector) coordinates i.e. the raw shapes.
@@ -834,23 +836,33 @@ def makeFocalPlanePlot(
         The array of axes objects to plot on.
     table : `numpy.ndarray`
         The table containing the data to be plotted.
+    filter : `str`
+        The filter name to include in the plot title.
     camera : `list`
         The list of camera detector objects.
+    band : `str`
+        Name of the current filter band.
     maxPointsPerDetector : `int`, optional
         The maximum number of points per detector to plot. If the number of
         points in the table is greater than this value, a random subset of
         points will be plotted.
+    maxQuiverPerDetector : `int`, optional
+        The maximum number of quiver arrows per detector to plot. If the number of
+        arrows in the table is greater than this value, a random subset of
+        arrows will be plotted.
     saveAs : `str`, optional
         The file path to save the figure.
     """
     if len(table) == 0:
         return
-    table = randomRowsPerDetector(table, maxPointsPerDetector)
+
+    if axs.shape[0] > 2:
+        raise TypeError("axs should have shape (2, 3) for focal plane plot.")
+
+    plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector)
 
     oneRaftOnly = camera.getName() in ["LSSTComCam", "LSSTComCamSim", "TS8"]
     plotLimit = 90 if oneRaftOnly else 90 * FULL_CAMERA_FACTOR
-
-    plotData(axs, table)
 
     for ax in axs[:, :2].ravel():
         ax.set_xlim(-plotLimit, plotLimit)
@@ -863,10 +875,39 @@ def makeFocalPlanePlot(
     visitId = table.meta["LSST BUTLER DATAID VISIT"]
     dayObs = visitId // 100000
     seqNum = visitId % 100000
-    fig.suptitle(
-        f"dayObs={dayObs} seqNum={seqNum}",
-        fontsize=12,
-        y=0.95,
+    title = "   ".join([
+        f"day={dayObs}",
+        f"seq={seqNum}",
+        "  ",
+        f"az={table.meta['az']:.1f}°",
+        f"el={table.meta['el']:.1f}°",
+        f"rtp={np.rad2deg(table.meta['rotTelPos']):.1f}°",
+    ])
+    fig.suptitle(title, fontsize=12, x=0.4, y=0.95, font="monospace")
+    band_colors = {
+        "u": "#85b7ff",
+        "g": "#a4dfaf",
+        "r": "#e28d7e",
+        "i": "#ffe07e",
+        "z": "#f89fd0",
+        "y": "#ad7f7f",
+    }
+    fig.patches.append(
+        Polygon(
+            [(0.85, 0.92), (0.93, 0.92), (0.93, 0.96), (0.85, 0.96)],
+            transform=fig.transFigure,
+            facecolor=band_colors[band],
+            edgecolor="k",
+            alpha=0.3,
+            zorder=5,
+        )
+    )
+    fig.text(
+        0.89, 0.9375,
+        f"band={band}",
+        ha="center", va="center",
+        fontsize=12, color="k",
+        zorder=10
     )
 
     rot = np.eye(2)
@@ -885,7 +926,16 @@ def makeFocalPlanePlot(
             rot,
         )
 
-    addRoses(fig, table.meta["rotTelPos"] + np.pi / 2, 0.0, -table.meta["rotSkyPos"])
+    azelAngle = table.meta["rotTelPos"] + np.pi / 2
+    xyAngle = 0.0
+    neAngle = -table.meta["rotSkyPos"] + np.pi / 2
+
+    addRoses(
+        fig=fig,
+        azelAngle=azelAngle,
+        xyAngle=xyAngle,
+        neAngle=neAngle
+    )
 
     if saveAs:
         fig.savefig(saveAs)
@@ -896,7 +946,9 @@ def makeEquatorialPlot(
     axs: npt.NDArray[np.object_],
     table: Table,
     camera: Camera,
-    maxPointsPerDetector: int = 5,
+    band: str,
+    maxPointsPerDetector: int = 60,
+    maxQuiverPerDetector: int = 5,
     saveAs: str = "",
 ) -> None:
     """Plot the PSFs on the focal plane, rotated to equatorial coordinates.
@@ -927,21 +979,29 @@ def makeEquatorialPlot(
         The table containing the data to be plotted.
     camera : `list`
         The list of camera detector objects.
+    band : `str`
+        Name of the current filter band.
     maxPointsPerDetector : `int`, optional
         The maximum number of points per detector to plot. If the number of
         points in the table is greater than this value, a random subset of
         points will be plotted.
+    maxQuiverPerDetector : `int`, optional
+        The maximum number of quiver arrows per detector to plot. If the number of
+        arrows in the table is greater than this value, a random subset of
+        arrows will be plotted.
     saveAs : `str`, optional
         The file path to save the figure.
     """
     if len(table) == 0:
         return
-    table = randomRowsPerDetector(table, maxPointsPerDetector)
+
+    if axs.shape[0] > 2:
+        raise TypeError("axs should have shape (2, 3) for equatorial plot.")
+
+    plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector, prefix="nw_")
 
     oneRaftOnly = camera.getName() in ["LSSTComCam", "LSSTComCamSim", "TS8"]
     plotLimit = 90 * MM_TO_DEG if oneRaftOnly else 90 * MM_TO_DEG * FULL_CAMERA_FACTOR
-
-    plotData(axs, table, prefix="nw_")
 
     for ax in axs[:, :2].ravel():
         ax.set_xlim(-plotLimit, plotLimit)
@@ -954,10 +1014,39 @@ def makeEquatorialPlot(
     visitId = table.meta["LSST BUTLER DATAID VISIT"]
     dayObs = visitId // 100000
     seqNum = visitId % 100000
-    fig.suptitle(
-        f"dayObs={dayObs} seqNum={seqNum}",
-        fontsize=12,
-        y=0.95,
+    title = "   ".join([
+        f"day={dayObs}",
+        f"seq={seqNum}",
+        "  ",
+        f"az={table.meta['az']:.1f}°",
+        f"el={table.meta['el']:.1f}°",
+        f"rtp={np.rad2deg(table.meta['rotTelPos']):.1f}°",
+    ])
+    fig.suptitle(title, fontsize=12, x=0.4, y=0.95, font="monospace")
+    band_colors = {
+        "u": "#85b7ff",
+        "g": "#a4dfaf",
+        "r": "#e28d7e",
+        "i": "#ffe07e",
+        "z": "#f89fd0",
+        "y": "#ad7f7f",
+    }
+    fig.patches.append(
+        Polygon(
+            [(0.85, 0.92), (0.93, 0.92), (0.93, 0.96), (0.85, 0.96)],
+            transform=fig.transFigure,
+            facecolor=band_colors[band],
+            edgecolor="k",
+            alpha=0.3,
+            zorder=5,
+        )
+    )
+    fig.text(
+        0.89, 0.9375,
+        f"band={band}",
+        ha="center", va="center",
+        fontsize=12, color="k",
+        zorder=10
     )
 
     rot = table.meta["nwRot"]
@@ -978,7 +1067,20 @@ def makeEquatorialPlot(
             xyFactor=MM_TO_DEG,
         )
 
-    addRoses(fig, table.meta["rotTelPos"] + table.meta["rotSkyPos"] + np.pi / 2, table.meta["rotSkyPos"], 0.0)
+    # azelAngle = 0.0
+    # xyAngle = -np.pi / 2 - table.meta["rotTelPos"]
+    # neAngle = -table.meta["rotTelPos"] - table.meta["rotSkyPos"]
+
+    azelAngle = table.meta["rotTelPos"] + table.meta["rotSkyPos"] + np.pi / 2
+    xyAngle = table.meta["rotSkyPos"]
+    neAngle = np.pi / 2
+
+    addRoses(
+        fig=fig,
+        azelAngle=azelAngle,
+        xyAngle=xyAngle,
+        neAngle=neAngle
+    )
 
     if saveAs:
         fig.savefig(saveAs)

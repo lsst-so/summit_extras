@@ -425,7 +425,7 @@ def plotData(
     axs: npt.NDArray[np.object_],
     table: Table,
     maxPointsPerDetector: int = 60,
-    minPointsPerDetector: int = 5,
+    maxQuiverPerDetector: int = 5,
     prefix: str = "",
 ) -> None:
     """Plot the data from the table on the provided figure and axes.
@@ -447,21 +447,21 @@ def plotData(
     prefix : `str`, optional
         The prefix to be added to the column names of the rotated shapes.
     """
-    tableDownsampled = randomRowsPerDetector(table, minPointsPerDetector)
-    table = randomRowsPerDetector(table, maxPointsPerDetector)
+    quiverTable = randomRowsPerDetector(table, maxQuiverPerDetector)
+    scatterTable = randomRowsPerDetector(table, maxPointsPerDetector)
 
-    x = table[prefix + "x"]
-    y = table[prefix + "y"]
-    e1 = table[prefix + "e1"]
-    e2 = table[prefix + "e2"]
-    e = table["e"]
-    fwhm = table["FWHM"]
+    x = scatterTable[prefix + "x"]
+    y = scatterTable[prefix + "y"]
+    e1 = scatterTable[prefix + "e1"]
+    e2 = scatterTable[prefix + "e2"]
+    e = scatterTable["e"]
+    fwhm = scatterTable["FWHM"]
 
-    xDownsampled = tableDownsampled[prefix + "x"]
-    yDownsampled = tableDownsampled[prefix + "y"]
-    e1Downsampled = tableDownsampled[prefix + "e1"]
-    e2Downsampled = tableDownsampled[prefix + "e2"]
-    eDownsampled = tableDownsampled["e"]
+    xDownsampled = quiverTable[prefix + "x"]
+    yDownsampled = quiverTable[prefix + "y"]
+    e1Downsampled = quiverTable[prefix + "e1"]
+    e2Downsampled = quiverTable[prefix + "e2"]
+    eDownsampled = quiverTable["e"]
 
     # Quiver plot
     quiverKwargs = {
@@ -946,7 +946,7 @@ def makeAzElPlot(
     camera: Camera,
     band: str,
     maxPointsPerDetector: int = 60,
-    minPointsPerDetector: int = 5,
+    maxQuiverPerDetector: int = 5,
     saveAs: str = "",
 ) -> None:
     """Plot the PSFs on the focal plane, rotated to az/el coordinates.
@@ -985,10 +985,10 @@ def makeAzElPlot(
         The maximum number of points per detector to plot. If the number of
         points in the table is greater than this value, a random subset of
         points will be plotted.
-    minPointsPerDetector : `int`, optional
-        The minimum number of points per detector to plot. If the number of
-        points in the table is less than this value,
-        all points will be plotted.
+    maxQuiverPerDetector : `int`, optional
+        The maximum number of quiver arrows per detector to plot. If the number of
+        arrows in the table is greater than this value, a random subset of
+        arrows will be plotted.
     saveAs : `str`, optional
         The file path to save the figure.
     """
@@ -998,7 +998,7 @@ def makeAzElPlot(
     if "kurtosis" in table.columns and axs.shape[0] > 2:
         plotHigherOrderMomentsData(axs[2, :], table, prefix="aa_")
 
-    plotData(axs[:2, :], table, maxPointsPerDetector, minPointsPerDetector, prefix="aa_")
+    plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector, prefix="aa_")
 
     oneRaftOnly = camera.getName() in ["LSSTComCam", "LSSTComCamSim", "TS8"]
     plotLimit = 90 * MM_TO_DEG if oneRaftOnly else 90 * MM_TO_DEG * FULL_CAMERA_FACTOR

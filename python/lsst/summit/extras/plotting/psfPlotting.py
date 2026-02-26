@@ -230,6 +230,37 @@ def addColorbarToAxes(mappable: ScalarMappable) -> Colorbar:
     return cbar
 
 
+def fullestFixedInterval(
+    data: npt.NDArray[np.float64],
+    intervalWidth: float,
+) -> tuple[float, float]:
+    """Find the interval of a given width that contains the most data.
+
+    Parameters
+    ----------
+    data : `numpy.ndarray`
+        The data for which to find the interval.
+    intervalWidth : `float`
+        The width of the interval.
+
+    Returns
+    -------
+    intervalStart : `float`
+        The start of the interval that contains the most data.
+    intervalEnd : `float`
+        The end of the interval that contains the most data.
+    """
+    mn, mx = np.nanquantile(data, [0, 1])
+    if not (np.isfinite(mn) and np.isfinite(mx)):
+        raise ValueError("Data must contain at least one finite value.")
+    if mx - intervalWidth < mn:
+        mid = 0.5 * (mn + mx)
+        return mid - 0.5 * intervalWidth, mid + 0.5 * intervalWidth
+    intervals = np.linspace(mn, mx - intervalWidth, 100)
+    counts = np.array([np.sum((data >= v) & (data <= v + intervalWidth)) for v in intervals])
+    best_idx = np.argmax(counts)
+    return intervals[best_idx], intervals[best_idx] + intervalWidth
+
 def makeTableFromSourceCatalogs(icSrcs: dict[int, SourceCatalog], visitInfo: VisitInfo) -> Table:
     """Extract the shapes from the source catalogs into an astropy table.
 
@@ -483,7 +514,10 @@ def plotData(
     axs[0, 1].quiverkey(qShape, X=0.08, Y=0.95, U=0.2, label="0.2", labelpos="S")
 
     # FWHM plot
-    vmin, vmax = np.nanpercentile(fwhm, [5, 95])
+    try:
+        vmin, vmax = fullestFixedInterval(fwhm, 0.2)
+    except TypeError:
+        vmin, vmax = 0.9, 1.1
     sc = axs[0, 1].scatter(x, y, c=fwhm, s=1, vmin=vmin, vmax=vmax)
     circle = Circle((0, 0), 1.75, color="red", fill=False, linestyle="--")
     axs[0, 1].add_patch(circle)
@@ -496,6 +530,7 @@ def plotData(
 
     # Ellipticity plots
     emax = np.quantile(np.abs(np.concatenate([e1, e2])), 0.97)
+    emax = 0.2
     axs[1, 0].scatter(x, y, c=e1, vmin=-emax, vmax=emax, cmap="bwr", s=1)
     circle = Circle((0, 0), 1.75, color="red", fill=False, linestyle="--")
     axs[1, 0].add_patch(circle)
@@ -512,7 +547,8 @@ def plotData(
     axs[1, 1].text(0.89, 0.92, "e2", transform=axs[1, 1].transAxes, fontsize=10)
 
     # FWHM hist
-    axs[0, 2].hist(fwhm, bins=int(np.sqrt(len(table))), color="C0")
+    hmax = 1.5 if np.nanquantile(fwhm, 0.75) < 1.5 else 3.0
+    axs[0, 2].hist(fwhm, bins=np.linspace(0.4, hmax, 100), color="C0")
     fwhmQuartiles = np.nanpercentile(fwhm, [25, 50, 75])
     textKwargs = {
         "x": 0.95,
@@ -535,7 +571,7 @@ def plotData(
     axs[0, 2].axvline(fwhmQuartiles[1], color="k", lw=2)
     axs[0, 2].axvline(fwhmQuartiles[2], color="grey", lw=1)
 
-    axs[1, 2].hist(e, bins=int(np.sqrt(len(table))), color="C1")
+    axs[1, 2].hist(e, bins=np.linspace(0, 0.4, 100), color="C1")
     eQuartiles = np.nanpercentile(e, [25, 50, 75])
     s = "e  \n"
     s += f"25%: {eQuartiles[0]:.3f}\n"
@@ -645,7 +681,7 @@ def plotHigherOrderMomentsData(
     }
 
     # Kurtosis hist
-    axs[2].hist(kurtosis, bins=int(np.sqrt(len(table))), color="C3")
+    axs[2].hist(kurtosis, bins=np.linspace(1.8, 2.3, 100), color="C3")
     kurtosisQuartiles = np.nanpercentile(kurtosis, [25, 50, 75])
     s = "Kurtosis\n"
     s += f"25%: {kurtosisQuartiles[0]:.3f}\n"

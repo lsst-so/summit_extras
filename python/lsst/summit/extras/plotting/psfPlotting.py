@@ -859,6 +859,8 @@ def makeFocalPlanePlot(
     if axs.shape[0] > 2:
         raise TypeError("axs should have shape (2, 3) for focal plane plot.")
 
+    band = band[0] # "i_39" -> "i" for example
+
     plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector)
 
     oneRaftOnly = camera.getName() in ["LSSTComCam", "LSSTComCamSim", "TS8"]
@@ -997,6 +999,8 @@ def makeEquatorialPlot(
 
     if axs.shape[0] > 2:
         raise TypeError("axs should have shape (2, 3) for equatorial plot.")
+
+    band = band[0] # "i_39" -> "i" for example
 
     plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector, prefix="nw_")
 
@@ -1144,6 +1148,8 @@ def makeAzElPlot(
 
     if "kurtosis" in table.columns and axs.shape[0] > 2:
         plotHigherOrderMomentsData(axs[2, :], table, prefix="aa_")
+
+    band = band[0] # "i_39" -> "i" for example
 
     plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector, prefix="aa_")
 

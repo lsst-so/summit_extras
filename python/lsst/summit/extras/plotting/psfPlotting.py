@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from astropy.table import Table, vstack
+from matplotlib import ticker
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Circle, Ellipse, FancyArrowPatch, Polygon
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -488,6 +489,10 @@ def plotData(
     axs[0, 1].add_patch(circle)
     cbar = addColorbarToAxes(sc)
     cbar.set_label("FWHM [arcsec]")
+    cbar.formatter = ticker.FormatStrFormatter("%04.2f")
+    cbar.update_ticks()
+    for tick in cbar.ax.get_yticklabels():
+        tick.set_fontfamily("monospace")
 
     # Ellipticity plots
     emax = np.quantile(np.abs(np.concatenate([e1, e2])), 0.97)
@@ -498,6 +503,10 @@ def plotData(
 
     cbar = addColorbarToAxes(axs[1, 1].scatter(x, y, c=e2, vmin=-emax, vmax=emax, cmap="bwr", s=1))
     cbar.set_label("e")
+    cbar.formatter = ticker.FormatStrFormatter("%+05.2f")
+    cbar.update_ticks()
+    for tick in cbar.ax.get_yticklabels():
+        tick.set_fontfamily("monospace")
     circle = Circle((0, 0), 1.75, color="red", fill=False, linestyle="--")
     axs[1, 1].add_patch(circle)
     axs[1, 1].text(0.89, 0.92, "e2", transform=axs[1, 1].transAxes, fontsize=10)

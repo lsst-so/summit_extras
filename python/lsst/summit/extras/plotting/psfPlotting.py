@@ -69,7 +69,7 @@ def addRoses(
     fig: Figure,
     azelAngle: float,
     xyAngle: float,
-    nwAngle: float,
+    neAngle: float,
 ) -> None:
     """Add compass roses to the figure.
 
@@ -81,16 +81,16 @@ def addRoses(
         The angle in radians for the azimuth/elevation compass rose.
     xyAngle : `float`
         The angle in radians for the x/y compass rose.
-    nwAngle : `float`
-        The angle in radians for the north/west compass rose.
+    neAngle : `float`
+        The angle in radians for the north/east compass rose.
     """
     for angle, label, color in [
         (azelAngle, "Az", "g"),
         (azelAngle + np.pi / 2, "El", "g"),
-        (nwAngle + np.pi / 2, "N", "r"),
-        (nwAngle, "W", "r"),
-        (xyAngle, "x", "k"),
-        (xyAngle + np.pi / 2, "y", "k"),
+        (neAngle + np.pi / 2, "E", "r"),
+        (neAngle, "N", "r"),
+        (xyAngle, "$y_\\mathrm{CCS}$", "k"),
+        (xyAngle + np.pi / 2, "$x_\\mathrm{CCS}$", "k"),
     ]:
         addRosePetal(fig, label, angle, color)
     size = fig.get_size_inches()
@@ -1067,7 +1067,16 @@ def makeAzElPlot(
             xyFactor=MM_TO_DEG,
         )
 
-    addRoses(fig, 0.0, -np.pi / 2 - table.meta["rotTelPos"], table.meta["rotSkyPos"])
+    azelAngle = 0.0
+    xyAngle = -np.pi / 2 - table.meta["rotTelPos"]
+    neAngle = -table.meta["rotTelPos"] - table.meta["rotSkyPos"]
+
+    addRoses(
+        fig=fig,
+        azelAngle=azelAngle,
+        xyAngle=xyAngle,
+        neAngle=neAngle
+    )
 
     if saveAs:
         fig.savefig(saveAs)

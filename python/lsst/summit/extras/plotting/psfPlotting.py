@@ -45,6 +45,7 @@ from treegp import meanify
 from lsst.afw.cameraGeom import FOCAL_PLANE, DetectorType
 from lsst.afw.geom.ellipses import Quadrupole
 from lsst.geom import LinearTransform, radians
+from lsst.utils.plotting import get_multiband_plot_colors
 from lsst.utils.plotting.figures import make_figure
 
 if TYPE_CHECKING:
@@ -889,14 +890,7 @@ def makeFocalPlanePlot(
         ]
     )
     fig.suptitle(title, fontsize=12, x=0.4, y=0.95, font="monospace")
-    band_colors = {
-        "u": "#85b7ff",
-        "g": "#a4dfaf",
-        "r": "#e28d7e",
-        "i": "#ffe07e",
-        "z": "#f89fd0",
-        "y": "#ad7f7f",
-    }
+    band_colors = get_multiband_plot_colors()
     fig.patches.append(
         Polygon(
             [(0.85, 0.92), (0.93, 0.92), (0.93, 0.96), (0.85, 0.96)],
@@ -1021,14 +1015,7 @@ def makeEquatorialPlot(
         ]
     )
     fig.suptitle(title, fontsize=12, x=0.4, y=0.95, font="monospace")
-    band_colors = {
-        "u": "#85b7ff",
-        "g": "#a4dfaf",
-        "r": "#e28d7e",
-        "i": "#ffe07e",
-        "z": "#f89fd0",
-        "y": "#ad7f7f",
-    }
+    band_colors = get_multiband_plot_colors()
     fig.patches.append(
         Polygon(
             [(0.85, 0.92), (0.93, 0.92), (0.93, 0.96), (0.85, 0.96)],
@@ -1155,14 +1142,7 @@ def makeAzElPlot(
         ]
     )
     fig.suptitle(title, fontsize=12, x=0.4, y=0.95, font="monospace")
-    band_colors = {
-        "u": "#85b7ff",
-        "g": "#a4dfaf",
-        "r": "#e28d7e",
-        "i": "#ffe07e",
-        "z": "#f89fd0",
-        "y": "#ad7f7f",
-    }
+    band_colors = get_multiband_plot_colors()
     fig.patches.append(
         Polygon(
             [(0.85, 0.92), (0.93, 0.92), (0.93, 0.96), (0.85, 0.96)],

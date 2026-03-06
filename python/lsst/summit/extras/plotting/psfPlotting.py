@@ -808,7 +808,7 @@ def makeFocalPlanePlot(
     axs: npt.NDArray[np.object_],
     table: Table,
     camera: Camera,
-    band: str,
+    physical_filter: str,
     maxPointsPerDetector: int = 60,
     maxQuiverPerDetector: int = 5,
     saveAs: str = "",
@@ -839,12 +839,10 @@ def makeFocalPlanePlot(
         The array of axes objects to plot on.
     table : `numpy.ndarray`
         The table containing the data to be plotted.
-    filter : `str`
-        The filter name to include in the plot title.
     camera : `list`
         The list of camera detector objects.
-    band : `str`
-        Name of the current filter band.
+    physical_filter : `str`
+        The physical filter name to include in the plot title.
     maxPointsPerDetector : `int`, optional
         The maximum number of points per detector to plot. If the number of
         points in the table is greater than this value, a random subset of
@@ -862,7 +860,7 @@ def makeFocalPlanePlot(
     if axs.shape[0] > 2:
         raise TypeError("axs should have shape (2, 3) for focal plane plot.")
 
-    band = band[0]  # "i_39" -> "i" for example
+    band = physical_filter[0]
 
     plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector)
 
@@ -942,7 +940,7 @@ def makeEquatorialPlot(
     axs: npt.NDArray[np.object_],
     table: Table,
     camera: Camera,
-    band: str,
+    physical_filter: str,
     maxPointsPerDetector: int = 60,
     maxQuiverPerDetector: int = 5,
     saveAs: str = "",
@@ -975,8 +973,8 @@ def makeEquatorialPlot(
         The table containing the data to be plotted.
     camera : `list`
         The list of camera detector objects.
-    band : `str`
-        Name of the current filter band.
+    physical_filter : `str`
+        The physical filter name to include in the plot title.
     maxPointsPerDetector : `int`, optional
         The maximum number of points per detector to plot. If the number of
         points in the table is greater than this value, a random subset of
@@ -994,7 +992,7 @@ def makeEquatorialPlot(
     if axs.shape[0] > 2:
         raise TypeError("axs should have shape (2, 3) for equatorial plot.")
 
-    band = band[0]  # "i_39" -> "i" for example
+    band = physical_filter[0]  # "i_39" -> "i" for example
 
     plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector, prefix="nw_")
 
@@ -1076,7 +1074,7 @@ def makeAzElPlot(
     axs: npt.NDArray[np.object_],
     table: Table,
     camera: Camera,
-    band: str,
+    physical_filter: str,
     maxPointsPerDetector: int = 60,
     maxQuiverPerDetector: int = 5,
     saveAs: str = "",
@@ -1107,12 +1105,10 @@ def makeAzElPlot(
         The array of axes objects to plot on.
     table : `numpy.ndarray`
         The table containing the data to be plotted.
-    filter : `str`
-        The filter name to include in the plot title.
     camera : `list`
         The list of camera detector objects.
-    band : `str`
-        Name of the current filter band.
+    physical_filter : `str`
+        The physical filter name to include in the plot title.
     maxPointsPerDetector : `int`, optional
         The maximum number of points per detector to plot. If the number of
         points in the table is greater than this value, a random subset of
@@ -1130,7 +1126,7 @@ def makeAzElPlot(
     if "kurtosis" in table.columns and axs.shape[0] > 2:
         plotHigherOrderMomentsData(axs[2, :], table, prefix="aa_")
 
-    band = band[0]  # "i_39" -> "i" for example
+    band = physical_filter[0]  # "i_39" -> "i" for example
 
     plotData(axs[:2, :], table, maxPointsPerDetector, maxQuiverPerDetector, prefix="aa_")
 

@@ -1061,10 +1061,6 @@ def makeEquatorialPlot(
             xyFactor=MM_TO_DEG,
         )
 
-    # azelAngle = 0.0
-    # xyAngle = -np.pi / 2 - table.meta["rotTelPos"]
-    # neAngle = -table.meta["rotTelPos"] - table.meta["rotSkyPos"]
-
     azelAngle = table.meta["rotTelPos"] + table.meta["rotSkyPos"] + np.pi / 2
     xyAngle = table.meta["rotSkyPos"]
     neAngle = np.pi / 2

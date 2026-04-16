@@ -188,7 +188,7 @@ def plotExposureTiming(
     integrationColor = "grey"
     readoutColor = "blue"
 
-    legendHandles = []
+    legendHandles: list = []
 
     expRecords = sorted(expRecords, key=lambda x: (x.day_obs, x.seq_num))  # ensure we're sorted
 
@@ -292,9 +292,9 @@ def plotExposureTiming(
     commandColors = {command: next(colorCycle) for command in uniqueCommands}
     for time, command in commandTimes.items():
         color = commandColors[command]
-        axes["az"].axvline(time, linestyle="-.", alpha=commandAlpha, color=color)
-        axes["el"].axvline(time, linestyle="-.", alpha=commandAlpha, color=color)
-        axes["rot"].axvline(time, linestyle="-.", alpha=commandAlpha, color=color)
+        axes["az"].axvline(time, linestyle="-.", alpha=commandAlpha, color=color)  # type: ignore[arg-type]
+        axes["el"].axvline(time, linestyle="-.", alpha=commandAlpha, color=color)  # type: ignore[arg-type]
+        axes["rot"].axvline(time, linestyle="-.", alpha=commandAlpha, color=color)  # type: ignore[arg-type]
 
     # manually build the legend to avoid duplicating the labels due to multiple
     # commands of the same name
@@ -325,7 +325,7 @@ def plotExposureTiming(
 if __name__ == "__main__":
     # example usage
     import lsst.summit.utils.butlerUtils as butlerUtils  # noqa: F811
-    from lsst.summit.extras.slewTiming import plotExposureTiming  # noqa: F811
+    from lsst.summit.extras.slewTiming import plotExposureTiming as plotExposureTiming  # type: ignore[no-redef] # noqa: F811
     from lsst.summit.utils.efdUtils import makeEfdClient
 
     client = makeEfdClient()

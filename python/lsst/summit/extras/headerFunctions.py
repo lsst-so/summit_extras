@@ -142,8 +142,8 @@ def buildHashAndHeaderDicts(
     data section, as defined by the dataSize and dataHdu.
 
     """
-    headersDict = {}
-    dataDict = {}
+    headersDict: dict[str, Any] = {}
+    dataDict: dict[str, str] = {}
 
     if libraryLocation:
         headersDict, dataDict = loadHeaderDictsFromLibrary(libraryLocation)
@@ -190,7 +190,7 @@ def buildHashAndHeaderDicts(
     return headersDict, dataDict
 
 
-def sorted(inlist: list, replacementValue: str = "<BLANK VALUE>") -> list:
+def sorted(inlist: set | list, replacementValue: str = "<BLANK VALUE>") -> list:
     """Redefinition of sorted() to deal with blank values and str/int mixes"""
     from builtins import sorted as _sorted
 
@@ -209,7 +209,7 @@ def keyValuesSetFromFiles(
     printResults: bool = True,
     libraryLocation: str | None = None,
     printPerFile: bool = False,
-) -> list[str]:
+) -> Any:
     """For a list of FITS files, get the set of values for the given keys.
 
     Parameters
@@ -236,19 +236,20 @@ def keyValuesSetFromFiles(
 
     headerDict, hashDict = buildHashAndHeaderDicts(fileList, libraryLocation=libraryLocation)
 
+    kValues: dict[str, set[Any]] | None
     if keys:  # necessary so that -j works on its own
         kValues = {k: set() for k in keys}
     else:
         keys = []
         kValues = None
 
-    if joinKeys:
-        joinedValues = set()
+    joinedValues: set[str] = set()
 
     for filename in headerDict.keys():
         header = headerDict[filename]
         for key in keys:
             if key in header:
+                assert kValues is not None
                 kValues[key].add(header[key])
                 if printPerFile:
                     print(f"{filename}\t{key}\t{header[key]}")

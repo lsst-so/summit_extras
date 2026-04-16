@@ -175,7 +175,7 @@ def getStreamingSequences(dayObs: int) -> dict[int, list[str]]:
     return data
 
 
-def getFlux(cutout: np.ndarray[float], backgroundLevel: float = 0) -> float:
+def getFlux(cutout: np.ndarray, backgroundLevel: float = 0) -> float:
     """Get the flux inside a cutout, subtracting the image-background.
 
     Here the flux is simply summed, and if the image background level is
@@ -314,7 +314,7 @@ def findFastStarTrackerImageSources(
 
     dayObs, seqNum, frameNum = dayObsSeqNumFrameNumFromFilename(filename)
 
-    sources = []
+    sources: list[Source | NanSource] = []
     if len(footprints) == 0:
         sources = [NanSource()]
         return sources
@@ -346,11 +346,11 @@ def findFastStarTrackerImageSources(
         source.localCentroidX = moments.moments_centroid.x - 1
         source.localCentroidY = moments.moments_centroid.y - 1
         sources.append(source)
-    return sortSourcesByFlux(sources)
+    return sortSourcesByFlux(sources)  # type: ignore[arg-type, return-value]
 
 
 def checkResultConsistency(
-    results: dict[int, list[Source]],
+    results: list[list[Source]] | typing.ValuesView[list[Source]],
     maxAllowableShift: float = 5,
     silent: bool = False,
 ) -> bool:
@@ -610,7 +610,7 @@ def plotSourcesOnImage(
 
     plt.imshow(data, interpolation="None", origin="lower")
 
-    sources = ensure_iterable(sources)
+    sources = list(ensure_iterable(sources))
     patches = []
     for source in sources:
         ax.scatter(source.centroidX, source.centroidY, color="red", marker="x")  # mark the centroid

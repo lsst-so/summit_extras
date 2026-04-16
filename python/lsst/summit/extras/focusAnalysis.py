@@ -127,7 +127,7 @@ class SpectralFocusAnalyzer:
         return self._spectrumBoxOffsets
 
     def _setColors(self, nPoints: int) -> None:
-        self.COLORS = cm.rainbow(np.linspace(0, 1, nPoints))
+        self.COLORS = cm.get_cmap("rainbow")(np.linspace(0, 1, nPoints))
 
     def _getBboxes(self, centroid: list[float]) -> list[geom.Box2I]:
         x, y = centroid
@@ -152,7 +152,7 @@ class SpectralFocusAnalyzer:
         return rectangle
 
     @staticmethod
-    def gauss(x: float, *pars: float) -> float:
+    def gauss(x: float | np.ndarray, *pars: float) -> float | np.ndarray:
         amp, mean, sigma = pars
         return amp * np.exp(-((x - mean) ** 2) / (2.0 * sigma**2))
 
@@ -222,10 +222,11 @@ class SpectralFocusAnalyzer:
         Call fitDataAndPlot() after running this to perform the parabolic fit
         to the focus data itself.
         """
-        fitData = {}
-        filters = set()
-        objects = set()
+        fitData: dict[int, dict] = {}
+        filters: set[str] = set()
+        objects: set[str] = set()
 
+        axes = None
         for seqNum in seqNums:
             fitData[seqNum] = {}
             dataId = {"day_obs": dayObs, "seq_num": seqNum, "detector": 0}
@@ -280,6 +281,7 @@ class SpectralFocusAnalyzer:
 
                 fitData[seqNum][i] = FitResult(amp=abs(coeffs[0]), mean=coeffs[1], sigma=abs(coeffs[2]))
                 if doDisplay:
+                    assert axes is not None
                     axes[1].plot(xs, data1d, "x", c=self.COLORS[i])
                     highResX = np.linspace(0, len(data1d), 1000)
                     if coeffs[0] is not np.nan:
@@ -419,7 +421,7 @@ class NonSpectralFocusAnalyzer:
         self._bestEffort = BestEffortIsr(embargo=embargo)
 
     @staticmethod
-    def gauss(x: float, *pars: float) -> float:
+    def gauss(x: float | np.ndarray, *pars: float) -> float | np.ndarray:
         amp, mean, sigma = pars
         return amp * np.exp(-((x - mean) ** 2) / (2.0 * sigma**2))
 
@@ -513,7 +515,7 @@ class NonSpectralFocusAnalyzer:
         Call fitDataAndPlot() after running this to perform the parabolic fit
         to the focus data itself.
         """
-        fitData = {}
+        fitData: dict[int, dict] = {}
         filters = set()
         objects = set()
 

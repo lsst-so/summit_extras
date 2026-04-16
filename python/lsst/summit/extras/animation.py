@@ -260,7 +260,9 @@ class Animator:
         airmass = airMassFromRawMetadata(rawMd)  # XXX this could be improved a lot
         if not airmass:
             airmass = -1
-        dayObs = dayObsIntToString(getDayObs(dataId))
+        dayObsInt = getDayObs(dataId)
+        assert dayObsInt is not None
+        dayObs = dayObsIntToString(dayObsInt)
         timestamp = expRecord.timespan.begin.to_datetime().strftime("%H:%M:%S")  # no microseconds
         ms = expRecord.timespan.begin.to_datetime().strftime("%f")  # always 6 chars long, 000000 if zero
         timestamp += f".{ms[0:2]}"
@@ -398,14 +400,14 @@ def animateDay(
 ) -> str | None:
     outputFilename = f"{dayObs}.mp4"
 
-    onSkyIds = getLatissOnSkyDataIds(butler, startDate=dayObs, endDate=dayObs)
+    onSkyIds = getLatissOnSkyDataIds(butler, startDate=dayObs, endDate=dayObs)  # type: ignore[arg-type]
     logger.info(f"Found {len(onSkyIds)} on sky ids for {dayObs}")
 
     onSkyIds = [updateDataIdOrDataCord(dataId, detector=0) for dataId in onSkyIds]
 
     animator = Animator(
         butler,
-        onSkyIds,
+        onSkyIds,  # type: ignore[arg-type]
         outputPath,
         outputFilename,
         dataProductToPlot=dataProductToPlot,

@@ -116,7 +116,7 @@ def makeFocalPlaneFWHMPlot(
         vmax = np.nanmax(list(fwhmValues.values()))
 
     norm = Normalize(vmin=vmin, vmax=vmax)
-    cmap = plt.cm.viridis
+    cmap = plt.get_cmap("viridis")
 
     for detectorId, fwhm in fwhmValues.items():
         detector = camera.get(detectorId)

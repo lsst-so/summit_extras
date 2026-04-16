@@ -172,7 +172,7 @@ inPositionTopics = {
 }
 
 
-def getAxisName(topic: str) -> str | None:
+def getAxisName(topic: str) -> str:
     # Note the order here matters, e.g. cameraCableWrap is a substring of
     # MTMount so it should be checked first, likewise axes are special cases
     # of the MTMount so should be checked first.
@@ -196,6 +196,8 @@ def getAxisName(topic: str) -> str | None:
 
     if any(x in topic for x in ["MTAOS", "MTHexapod", "MTM1M3", "MTM2"]):
         return "aos"
+
+    raise ValueError(f"Could not determine axis name for topic: {topic}")
 
 
 def getDomeData(
@@ -530,7 +532,7 @@ def plotExposureTiming(
         if command not in color_maps[axisName]:
             color_maps[axisName][command] = next(color_iterators[axisName])
         color = color_maps[axisName][command]
-        axes[axisName].axvline(time, linestyle="-.", alpha=commandAlpha, color=color)
+        axes[axisName].axvline(time, linestyle="-.", alpha=commandAlpha, color=color)  # type: ignore[arg-type]
 
         # Add to legend entries if not already there
         shortCommand = command.replace("lsst.sal.", "")

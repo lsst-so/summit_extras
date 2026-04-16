@@ -629,6 +629,7 @@ def plotHigherOrderMomentsData(
 
     coords = np.vstack([x, y]).T
     meanComa = {}
+    binning = meanify(binSpacing)  # initialized here; overwritten in loop
     for i in (1, 2):
         binning = meanify(binSpacing)
         binning.add_field(coords, table[f"coma{i}"])

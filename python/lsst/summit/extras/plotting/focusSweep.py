@@ -276,7 +276,7 @@ def plotSweepParabola(
         ax.set_ylabel("e1 or e2")
 
     # Print useful info in the top right
-    kwargs = dict(fontsize=10, ha="left", fontfamily="monospace")
+    kwargs: dict[str, Any] = dict(fontsize=10, ha="left", fontfamily="monospace")
     xtext = 0.6
     fig.text(xtext, 0.94, "FWHM fit", **kwargs)
     fig.text(xtext, 0.92, "--------", **kwargs)

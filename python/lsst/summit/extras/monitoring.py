@@ -181,9 +181,10 @@ class Monitor:
                 if self.overlayAmps:
                     cgUtils.overlayCcdBoxes(exp.getDetector(), display=self.display, isTrimmed=True)
 
+                assert isinstance(imageInfoText, list)
                 self._printImageInfo(imageInfoText)
                 lastDisplayed = expId
 
             except NotFoundError as e:  # NotFoundError when filters aren't defined
-                print(f"Skipped displaying {dataId} due to {e}")
+                print(f"Skipped displaying due to {e}")
         return

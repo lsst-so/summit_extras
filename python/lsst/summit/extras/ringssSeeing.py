@@ -470,7 +470,7 @@ class RingssSeeingMonitor:
         def offset_time_aware(utc_time: datetime) -> datetime:
             # Ensure the time is timezone-aware in UTC
             if utc_time.tzinfo is None:
-                utc_time = utc.localize(utc_time)
+                utc_time = utc_time.replace(tzinfo=utc)
             return utc_time.astimezone(chile_tz)
 
         df.index = pd.DatetimeIndex([t for t in df.index])

@@ -114,14 +114,14 @@ class LogBrowser:
         -------
         dataRefs : `list` [`lsst.daf.butler.DatasetRef`]
         """
-        results = self.butler.registry.queryDatasets(
+        queryResults = self.butler.registry.queryDatasets(
             f"{self.taskName}_log",
             collections=self.collection,
             findFirst=True,
             where=self.where,
             bind=self.bind,
         )
-        results = list(set(results))
+        results = list(set(queryResults))
         self.log.info(f"Found {len(results)} datasets in collection for task {self.taskName}")
         return sorted(results)
 
@@ -252,7 +252,7 @@ class LogBrowser:
             log = self.logs[dataRef]
             if full:  # print the whole thing
                 for line in log:
-                    self._printLineIf.print(line)
+                    self._printLineIf(line)
             else:
                 # print the last line from the Exception onwards if found,
                 # failing over to printing the whole thing just in case.

@@ -99,7 +99,7 @@ def _findKeyForValue(
     return listOfKeys[0]
 
 
-def _hashFile(fileToHash, dataHdu, sliceToUse) -> str:
+def _hashFile(fileToHash: Any, dataHdu: int | str, sliceToUse: slice) -> str:
     """Put in place so that if hashing multiple HDUs is desired when one
     is filled with zeros it will be easy to add"""
     data = fileToHash[dataHdu].data[sliceToUse, sliceToUse].tostring()
@@ -107,7 +107,7 @@ def _hashFile(fileToHash, dataHdu, sliceToUse) -> str:
     return h
 
 
-def _hashData(data: np.array) -> str:
+def _hashData(data: np.ndarray) -> str:
     h = hashlib.sha256(data).hexdigest()  # hex because we want it readable in the dict
     return h
 

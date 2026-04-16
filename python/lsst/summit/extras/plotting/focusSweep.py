@@ -25,6 +25,9 @@ __all__ = [
     "plotSweepParabola",
 ]
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from matplotlib.figure import Figure
@@ -32,10 +35,15 @@ from matplotlib.figure import Figure
 from lsst.summit.utils.dateTime import efdTimestampToAstropy
 from lsst.summit.utils.efdUtils import getMostRecentRowWithDataBefore
 
+if TYPE_CHECKING:
+    from astropy.table import Table
+
+    from lsst.daf.butler import DimensionRecord
+
 PLATESCALE = 0.2  # arcsec / pixel
 
 
-def collectSweepData(records, consDbClient, efdClient):
+def collectSweepData(records: list[DimensionRecord], consDbClient: Any, efdClient: Any) -> Table:
     """Populate focus sweep table.
 
     Parameters
@@ -103,7 +111,7 @@ def collectSweepData(records, consDbClient, efdClient):
     return data
 
 
-def inferSweepVariable(data):
+def inferSweepVariable(data: Table) -> str | None:
     """Heuristically determine which variable is being swept during a focus
     sweep.
 
@@ -142,7 +150,7 @@ def inferSweepVariable(data):
     return varName
 
 
-def fitSweepParabola(data, varName):
+def fitSweepParabola(data: Table, varName: str) -> dict[str, Any]:
     fwhms = data["fwhm"]
     e1s = data["e1"]
     e2s = data["e2"]
@@ -181,7 +189,13 @@ def fitSweepParabola(data, varName):
     )
 
 
-def plotSweepParabola(data, varName, fitDict, saveAs=None, figAxes=None):
+def plotSweepParabola(
+    data: Table,
+    varName: str,
+    fitDict: dict[str, Any],
+    saveAs: str | None = None,
+    figAxes: tuple[Figure, np.ndarray[Any, np.dtype[np.object_]]] | None = None,
+) -> None:
     xs = data[varName]
 
     if figAxes is None:

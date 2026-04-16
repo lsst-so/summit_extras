@@ -102,7 +102,7 @@ def makeDofPredictedFWHMPlot(
     zMin: int = 4,
     vmaxEllipticities: float = 0.2,
     fwhmRange: float = 0.2,
-):
+) -> None:
     """Make a focal plane plot of predicted FWHM based on estimated DOFs.
 
     Top center: Shows the measured zernikes and predicted zernikes from degrees
@@ -678,7 +678,7 @@ def makeZernikePredictedFWHMPlot(
     table: Table,
     wavefrontData: dict[str, Any],
     saveAs: str = "",
-):
+) -> None:
     """Make a focal plane plot of predicted FWHM based on Zernike coefficients.
 
     Left panel: Shows the measured zernikes in the corner and the interpolated

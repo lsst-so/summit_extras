@@ -172,7 +172,7 @@ inPositionTopics = {
 }
 
 
-def getAxisName(topic):
+def getAxisName(topic: str) -> str | None:
     # Note the order here matters, e.g. cameraCableWrap is a substring of
     # MTMount so it should be checked first, likewise axes are special cases
     # of the MTMount so should be checked first.

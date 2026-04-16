@@ -41,6 +41,8 @@ except ImportError:
     HAS_EFD_CLIENT = False
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from matplotlib.figure import Figure
     from pandas import DataFrame, Series
 
@@ -205,7 +207,7 @@ class SeeingConditions:
             row1, row2 = rows[0], rows[1]
 
             # Helper function for interpolation
-            def interpolate(col):
+            def interpolate(col: str) -> float:
                 if col in row1 and col in row2:
                     v1, v2 = row1.get(col, float("nan")), row2.get(col, float("nan"))
                     return v1 + (v2 - v1) * w
@@ -231,7 +233,7 @@ class SeeingConditions:
             self.windSpeed = interpolate("wind")
             self.zenithDistance = interpolate("zenithDistance")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"SeeingConditions @ {self.timestamp.isot}\n"
             f"  Seeing          = XXX define me!\n"
@@ -465,7 +467,7 @@ class RingssSeeingMonitor:
         chile_tz = ZoneInfo("America/Santiago")
 
         # Function to convert UTC to Chilean time
-        def offset_time_aware(utc_time):
+        def offset_time_aware(utc_time: datetime) -> datetime:
             # Ensure the time is timezone-aware in UTC
             if utc_time.tzinfo is None:
                 utc_time = utc.localize(utc_time)

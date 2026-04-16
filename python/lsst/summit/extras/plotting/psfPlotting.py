@@ -401,7 +401,7 @@ def extendTable(
     return table
 
 
-def makeFigureAndAxes(nrows=2) -> tuple[Figure, Any]:
+def makeFigureAndAxes(nrows: int = 2) -> tuple[Figure, Any]:
     """Create a figure and axes for plotting.
 
     Parameters
@@ -597,7 +597,7 @@ def plotHigherOrderMomentsData(
     prefix: str = "",
     binSpacing: float = 0.1,
     maxPointsPerDetector: int = 5,
-):
+) -> None:
     """Plot coma, trefoil and kurtosis from the table on the provided axes.
 
     Parameters
@@ -710,7 +710,7 @@ def outlineDetectors(
     rot: npt.NDArray[np.float64],
     rotAngle: float,
     xyFactor: float = 1.0,
-):
+) -> None:
     """Plot the outlines of the detectors.
 
     Parameters
@@ -767,7 +767,7 @@ def shadeRafts(
     camera: Camera,
     rot: npt.NDArray[np.float64],
     xyFactor: float = 1.0,
-):
+) -> None:
     """Shade the rafts in the focal plane plot.
 
     Parameters

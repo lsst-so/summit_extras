@@ -79,7 +79,7 @@ def makeFocalPlaneFWHMPlot(
     vmax: float | None = None,
     saveAs: str = "",
     title: str = "",
-):
+) -> None:
     """Plot the FWHM across the Focal Plane, from the fwhm_values
     and detector_ids. The FWHM values are plotted per detector on
     a focal plane plot, with the color indicating the FWHM value.

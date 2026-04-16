@@ -66,7 +66,7 @@ class Monitor:
         self.overlayAmps = False  # do the overlay?
         self.measureFromChipCenter = False
 
-    def _getLatestImageDataIdAndExpId(self) -> tuple:
+    def _getLatestImageDataIdAndExpId(self) -> tuple[dict, int]:
         """Get the dataId and expId for the most recent image in the repo."""
         dataId = getMostRecentDataId(self.butler)
         expId = getExpIdFromDayObsSeqNum(self.butler, dataId)["exposure"]
@@ -122,7 +122,7 @@ class Monitor:
             return elements
         return " ".join([e for e in elements])
 
-    def _printImageInfo(self, elements: list) -> None:
+    def _printImageInfo(self, elements: list[str]) -> None:
         size = 3
         top = 3850  # just under title for size=3
         xnom = -600  # 0 is the left edge of the image

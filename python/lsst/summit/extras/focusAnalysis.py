@@ -129,7 +129,7 @@ class SpectralFocusAnalyzer:
     def _setColors(self, nPoints: int) -> None:
         self.COLORS = cm.rainbow(np.linspace(0, 1, nPoints))
 
-    def _getBboxes(self, centroid: list[float]) -> geom.Box2I:
+    def _getBboxes(self, centroid: list[float]) -> list[geom.Box2I]:
         x, y = centroid
         bboxes = []
 
@@ -381,7 +381,7 @@ class SpectralFocusAnalyzer:
             print(f"Best fit for spectrum slice {i} = {bestFit:.4f}mm")
         return bestFits
 
-    def _generateLegendText(self, nSpectrumSlices: int) -> str:
+    def _generateLegendText(self, nSpectrumSlices: int) -> list[str]:
         if nSpectrumSlices == 1:
             return ["m=+1 spectrum slice"]
         if nSpectrumSlices == 2:

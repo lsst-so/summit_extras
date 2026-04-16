@@ -80,7 +80,9 @@ class ImageSorter:
         previousAnnotation = info[previousDataId]
         return previousAnnotation
 
-    def addData(self, dataId, info, answer: str, mode: str, imNum: int) -> None:
+    def addData(
+        self, dataId: tuple[str, int], info: dict[tuple[str, int], str], answer: str, mode: str, imNum: int
+    ) -> None:
         """Modes = O(verwrite), S(kip), A(ppend)"""
         if "=" in answer:
             answer = self.getPreviousAnnotation(info, imNum)
@@ -128,7 +130,7 @@ class ImageSorter:
         return tags, notes
 
     @staticmethod
-    def _load(filename: str):
+    def _load(filename: str) -> dict:
         """Internal loading only.
 
         Not to be used by users for reading back annotations"""
@@ -137,7 +139,7 @@ class ImageSorter:
         return info
 
     @staticmethod
-    def _save(info, filename: str) -> None:
+    def _save(info: dict, filename: str) -> None:
         with open(filename, "wb") as dumpFile:
             pickle.dump(info, dumpFile)
 

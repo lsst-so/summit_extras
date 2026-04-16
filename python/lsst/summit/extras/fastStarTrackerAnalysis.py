@@ -91,7 +91,7 @@ class Source:
     parentImageHeight: int | float = np.nan
     expTime: float = np.nan
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Print everything except the full details of the moments."""
         retStr = ""
         for itemName in self.__slots__:
@@ -113,7 +113,7 @@ class Source:
 
 
 class NanSource:
-    def __getattribute__(self, name: str):
+    def __getattribute__(self, name: str) -> float:
         return np.nan
 
 

@@ -199,7 +199,7 @@ def getAxisName(topic):
 
 
 def getDomeData(
-    client: EfdClient, begin: Time, end: Time, prePadding: float, postPadding: float, threshold: float = 2.7
+    client: EfdClient, begin: Time, end: Time, prePadding: float, postPadding: float
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Get dome data and when dome is within threshold of being in position.
 
@@ -215,16 +215,14 @@ def getDomeData(
         The amount of time in seconds to pad before the begin time.
     postPadding : `float`
         The amount of time in seconds to pad after the end time.
-    threshold : `float`, optional
-        The threshold in degrees for considering the dome to be in position.
 
     Returns
     -------
     domeData : `pd.DataFrame`
         The dome data with actual and commanded positions.
-    domeBelowThreshold : `pd.DataFrame`
-        A dataframe with a single entry indicating the time when the dome
-        position error drops below the threshold.
+    domeVignetted : `pd.DataFrame`
+        A dataframe with an entry indicating when the telescope
+        is no longer vignetted
     """
     domeData = getEfdData(
         client,
@@ -235,21 +233,29 @@ def getDomeData(
         prePadding=prePadding,
         postPadding=postPadding,
     )
-    # find the time when the dome position error drops below threshold
-    domeData["diff"] = (domeData["positionActual"] - domeData["positionCommanded"]).abs()
-    # Boolean mask where condition holds
-    mask = domeData["diff"] < threshold
-    # Rising edge: True when mask is True
-    # but previous sample was False (or NaN at start)
-    rising = mask & (~mask.shift(1, fill_value=False))
-    if rising.any():
-        # The last rising edge
-        # (latest time where we enter the < threshold region)
-        event_time = rising[rising].index.max()
-
-    # Make a new dataframe with the domeBelowThreshold
-    domeBelowThreshold = pd.DataFrame(data={"inPosition": [True]}, index=[event_time])
-    return domeData, domeBelowThreshold
+    # Get the data with the vignetted flag
+    vignettedData = getEfdData(
+        client,
+        "lsst.sal.MTDomeTrajectory.logevent_telescopeVignetted",
+        columns=["vignetted"],
+        begin=begin,
+        end=end,
+        prePadding=prePadding,
+        postPadding=postPadding,
+    )
+    if len(vignettedData) == 0:
+        vignettedTime = begin.utc.to_datetime()
+    # check we have the column and that it contains at least 1 value of 1
+    if "vignetted" in vignettedData.columns and (vignettedData["vignetted"] == 1).any():
+        vignettedData = vignettedData[vignettedData["vignetted"] == 1]
+        vignettedTime = vignettedData.index[-1]
+    else:
+        log = logging.getLogger(__name__)
+        log.warning("No vignetted data found for the given time range. Assuming always vignetted.")
+        vignettedTime = begin.utc.to_datetime()
+    # Make a new dataframe with the vignetting data
+    domeVignetted = pd.DataFrame(data={"vignetted": [False]}, index=[vignettedTime])
+    return domeData, domeVignetted
 
 
 def plotExposureTiming(
@@ -258,6 +264,7 @@ def plotExposureTiming(
     prePadding: float = 1,
     postPadding: float = 3,
     narrowHeightRatio: float = 0.4,
+    figure: Figure | None = None,
 ) -> Figure | None:
     """Plot the mount command timings for a set of exposures.
 
@@ -315,7 +322,7 @@ def plotExposureTiming(
     el = mountData.elevationData
     rot = mountData.rotationData
 
-    domeData, domeBelowThreshold = getDomeData(client, begin, end, prePadding, postPadding)
+    domeData, domeVignetted = getDomeData(client, begin, end, prePadding, postPadding)
 
     # Calculate relative heights for the gridspec
     narrowHeight = narrowHeightRatio
@@ -332,7 +339,12 @@ def plotExposureTiming(
     ]
 
     # Create figure with adjusted gridspec
-    fig = make_figure(figsize=(18, 8))
+    figsize = (18, 8)
+    if figure is None:
+        fig = make_figure(figsize=figsize)
+    else:
+        fig = figure
+        log.warning(f"Using provided figure, (recommened {figsize=}). This better be ~in a notebook!")
     gs = fig.add_gridspec(8, 2, height_ratios=[*heights, 0.15], width_ratios=[0.8, 0.2], hspace=0)
 
     # Create axes with shared x-axis
@@ -466,12 +478,12 @@ def plotExposureTiming(
                 ),
             ]
         )
-        # Add special domeBelowThreshold axvline
+        # Add special domeVignetted axvline
         if label == "Dome":
-            inPositionTransitions = domeBelowThreshold
-            for time, data in inPositionTransitions.iterrows():
-                inPosition = data["inPosition"]
-                if inPosition:
+            vignettingTransitions = domeVignetted
+            for time, data in vignettingTransitions.iterrows():
+                vignetted = data["vignetted"]
+                if not vignetted:
                     axes[axisName].axvline(time, color="magenta", linestyle="--", alpha=inPositionAlpha)
 
             legendEntries[axisName].extend(
@@ -481,7 +493,7 @@ def plotExposureTiming(
                         [0],
                         color="magenta",
                         linestyle="-",
-                        label=f"{label} below threshold=True",
+                        label=f"{label} vignetted=False",
                         alpha=inPositionAlpha,
                     ),
                 ]
@@ -541,6 +553,11 @@ def plotExposureTiming(
     ]
     bottomLegendAx.legend(handles=shadingLegendHandles, loc="center", bbox_to_anchor=(0.4, 0.5), ncol=2)
 
+    # For some reason xlim is different on the Dome plot.
+    # This sets it to match:
+    az_xlim = axes["az"].get_xlim()
+    axes["dome"].set_xlim(az_xlim)
+
     # Set labels with horizontal orientation
     for axisName, ax in axes.items():
         ax.set_ylabel(
@@ -553,7 +570,6 @@ def plotExposureTiming(
             ha="right",
             va="center",
         )
-
     axes["rot"].set_xlabel("Time (UTC)")
 
     # Add title centered on main plot area only

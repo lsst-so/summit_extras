@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "/Users/merlin/lsst/summit_extras/.claude"
+    ]
+  }
+}

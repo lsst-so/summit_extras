@@ -675,6 +675,7 @@ class NonSpectralFocusAnalyzer:
             dist = norm(np.array(centroid) - np.array(firstCentroid))
             if dist > maxDistance:
                 print(f"Skipping {seqNum} because distance {dist}> maxDistance {maxDistance}")
+                continue
 
             fitData[seqNum]["fitResult"] = FitResult(amp=amp, mean=gausMean, sigma=fwhm * FWHMTOSIGMA)
             fitData[seqNum]["eeRadius50"] = imExam.imStats.eeRadius50

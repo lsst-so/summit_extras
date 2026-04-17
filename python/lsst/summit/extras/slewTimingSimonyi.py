@@ -213,7 +213,7 @@ def getAxisName(topic: str) -> str:
     if any(x in topic for x in ["MTPtg", "MTMount", "MTM1M3", "MTM2"]):
         return "mount"
 
-    if any(x in topic for x in ["MTAOS", "MTHexapod", "MTM1M3", "MTM2"]):
+    if any(x in topic for x in ["MTAOS", "MTHexapod"]):
         return "aos"
 
     raise ValueError(f"Could not determine axis name for topic: {topic}")

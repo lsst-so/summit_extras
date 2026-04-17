@@ -310,7 +310,7 @@ class Animator:
         pngFilesOriginal = [self.dataIdToFilename(d) for d in self.dataIdList]
         for filename in pngFilesOriginal:  # these must all now exist, but let's assert just in case
             assert self.exists(filename)
-        tempDir = os.path.join(self.pngPath, f"{uuid.uuid1()}/"[0:8])
+        tempDir = os.path.join(self.pngPath, uuid.uuid1().hex[:8])
         os.makedirs(tempDir)
         pngFileList = []  # list of number-prepended files in the temp dir
         for i, dId in enumerate(self.dataIdList):

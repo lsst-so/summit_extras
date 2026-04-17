@@ -302,7 +302,7 @@ def plotSweepParabola(
     label = varName.replace("_", " ")
     label = label.replace("u", "Rx")
     label = label.replace("v", "Ry")
-    unit = "deg" if "r" in label else "µm"
+    unit = "deg" if "R" in label else "µm"
 
     for ax in [fwhmVarAx, fwhmSeqAx]:
         ax.set_ylabel("fwhm [arcsec]")

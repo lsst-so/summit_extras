@@ -39,10 +39,14 @@ S - Satellite or plane crossing image
 ! - Something interesting/crazy - see notes on image
 """
 
-INSTRUCTIONS = TAGS + "\n" + """
+INSTRUCTIONS = (
+    TAGS
+    + "\n"
+    + """
                 = - apply the same annotations as the previous image
                 To enter no tags but some notes, just start with a space
                 """
+)
 
 
 class ImageSorter:

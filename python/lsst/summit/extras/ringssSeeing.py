@@ -207,7 +207,7 @@ class SeeingConditions:
         """
         raise NotImplementedError("I need the transormation to get this value in arcsec")
 
-    def __init__(self, rows: list[Series]) -> None:
+    def __init__(self, rows: list[Series], targetTime: Time | None = None) -> None:
         # Ensure we have valid data
         assert len(rows) >= 1, "Must provide some data!"
         assert len(rows) <= 2, "Provided data must be either or two rows."
@@ -240,14 +240,19 @@ class SeeingConditions:
             self.windSpeed = row.get("wind", float("nan"))
             self.zenithDistance = row.get("zenithDistance", float("nan"))
         else:
-            # Interpolate between two rows
+            # Interpolate between two rows at the requested target time.
+            # If no target is given, fall back to the midpoint.
             t1, t2 = timestamps
-            # Calculate the midpoint timestamp for interpolation
-            t = t1 + (t2 - t1) / 2
+            if targetTime is None:
+                t = t1 + (t2 - t1) / 2
+            else:
+                t = pd.Timestamp(targetTime.datetime).tz_localize("UTC")
             self.timestamp = Time(t)
 
-            # Weight for interpolation (0 to 1)
+            # Weight for linear interpolation (0 to 1), clamped to the
+            # bracket so extrapolation beyond the two rows can't occur.
             w = (t - t1) / (t2 - t1)
+            w = max(0.0, min(1.0, float(w)))
 
             row1, row2 = rows[0], rows[1]
 
@@ -382,6 +387,7 @@ class RingssSeeingMonitor:
 
         return SeeingConditions(
             rows=[earlier, later],
+            targetTime=time,
         )
 
     def getMostRecentTimestamp(self) -> Time:

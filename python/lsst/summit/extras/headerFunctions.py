@@ -125,10 +125,12 @@ def _findKeyForValue(
         ``returnCollisions`` is `True`.
     """
     listOfKeys = [k for (k, v) in dictionary.items() if v == value]
-    if warnOnCollision and len(listOfKeys) != 1:
+    if warnOnCollision and len(listOfKeys) > 1:
         logger.warning("Found multiple keys for value! Returning only first.")
     if returnCollisions:
         return listOfKeys
+    if not listOfKeys:
+        return None
     return listOfKeys[0]
 
 

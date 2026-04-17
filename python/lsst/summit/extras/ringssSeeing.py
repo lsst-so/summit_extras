@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
+import numpy as np
 import pandas as pd
 from astropy.time import Time, TimeDelta
 from matplotlib.dates import DateFormatter, num2date
@@ -578,7 +579,7 @@ class RingssSeeingMonitor:
         offset_ticks = [offset_time_aware(num2date(tick)) for tick in ax1.get_xticks()]
         ax2.set_xticklabels([tick.strftime("%H:%M:%S") for tick in offset_ticks])
 
-        ax1.set_ylim(0, 1.1 * max([s.seeing2 for s in seeings]))
+        ax1.set_ylim(0, 1.1 * np.nanmax([s.seeing2 for s in seeings]))
         ax1.set_xlabel("Time (UTC)")
         ax2.set_xlabel("Time (Chilean Time)")
         ax1.set_ylabel("Seeing (arcsec)")

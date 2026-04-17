@@ -359,7 +359,7 @@ class SpectralFocusAnalyzer:
                     assert axes is not None
                     axes[1].plot(xs, data1d, "x", c=self.COLORS[i])
                     highResX = np.linspace(0, len(data1d), 1000)
-                    if coeffs[0] is not np.nan:
+                    if not np.isnan(coeffs[0]):
                         axes[1].plot(highResX, self.gauss(highResX, *coeffs), "k-")
 
             if doDisplay:  # show all color boxes together

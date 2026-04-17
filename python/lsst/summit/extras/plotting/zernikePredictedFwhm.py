@@ -426,7 +426,7 @@ def makeDofPredictedFWHMPlot(
         f"e2 p50 = {np.percentile(np.abs(table['e2']), 50):.3f}\n\n"
         f"Donut blur = {donutBlur:.2f} arcsec\n"
         f"Median AOS FWHM = {np.median(wavefrontData['fwhmMeasured']):.2f} arcsec\n\n"
-        f"sqrt(fwhm_95 - fwhm_05) = {sqrtFwhm9505:.2f} arcsec\n\n"
+        f"sqrt(fwhm_95^2 - fwhm_05^2) = {sqrtFwhm9505:.2f} arcsec\n\n"
         f"⟨FWHM^2_meas - FWHM^2_AOS @ blur⟩ = {fwhmMetric:.2f} arcsec^2"
     )
     wrapped = "\n".join([fill(line, width=40) for line in bodyStr.split("\n")])

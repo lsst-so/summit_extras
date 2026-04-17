@@ -293,14 +293,16 @@ def plotExposureTiming(
         hexMoveStarts = getEfdData(
             client,
             "lsst.sal.ATAOS.logevent_hexapodCorrectionStarted",
-            expRecord=record,
+            begin=begin,
+            end=end,
             prePadding=prePadding,
             postPadding=postPadding,
         )
         hexMoveEnds = getEfdData(
             client,
             "lsst.sal.ATAOS.logevent_hexapodCorrectionCompleted",
-            expRecord=record,
+            begin=begin,
+            end=end,
             prePadding=prePadding,
             postPadding=postPadding,
         )

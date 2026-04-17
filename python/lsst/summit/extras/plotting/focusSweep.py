@@ -118,7 +118,7 @@ def collectSweepData(records: list[DimensionRecord], consDbClient: Any, efdClien
     return data
 
 
-def inferSweepVariable(data: Table) -> str | None:
+def inferSweepVariable(data: Table) -> str:
     """Heuristically identify which hexapod axis is being swept.
 
     Compares each hexapod axis's overall RMS against the RMS residual
@@ -159,6 +159,8 @@ def inferSweepVariable(data: Table) -> str | None:
         if stat > statMax:
             varName = vName
             statMax = stat
+    if varName is None:
+        raise ValueError("Failed to infer swept variable from hexapod data")
     return varName
 
 

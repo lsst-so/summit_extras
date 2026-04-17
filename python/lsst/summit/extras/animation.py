@@ -426,7 +426,7 @@ class Animator:
             Full path of the PNG to write.
         """
         if self.exists(saveFilename) and not self.remakePngs:  # should not be possible due to prerun
-            assert False, f"Almost overwrote {saveFilename} - how is this possible?"
+            raise RuntimeError(f"Almost overwrote {saveFilename} - how is this possible?")
 
         if self.debug:
             logger.info(f"Creating {saveFilename}")

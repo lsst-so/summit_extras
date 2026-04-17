@@ -460,30 +460,33 @@ def makeDofPredictedFWHMPlot(
     fwhmWithAtm = np.sqrt(wavefrontData["fwhmInterpolated"] ** 2 + donutBlur**2)
     cornersFwhmWithAtm = np.sqrt(wavefrontData["fwhmMeasured"] ** 2 + donutBlur**2)
 
-    vals = np.concatenate(
+    # Use a single colour range for all three FWHM panels below so that
+    # equal colours represent equal arcsec across predicted and measured
+    # data. Base it on the 5-95 percentile of all three sets combined.
+    allFwhm = np.concatenate(
         [
-            fwhmWithAtm - np.median(fwhmWithAtm),
-            cornersFwhmWithAtm - np.median(cornersFwhmWithAtm),
-            table["FWHM"] - np.median(table["FWHM"]),
+            np.asarray(fwhmWithAtm),
+            np.asarray(cornersFwhmWithAtm),
+            np.asarray(table["FWHM"]),
         ]
     )
-    vmin, vmax = np.percentile(vals, [5, 95])
+    fwhmVmin, fwhmVmax = np.nanpercentile(allFwhm, [5, 95])
 
     sc = ax.scatter(
         table["aa_x"],
         table["aa_y"],
         c=fwhmWithAtm,
         s=9,
-        vmin=vmin + np.median(fwhmWithAtm),
-        vmax=vmax + np.median(fwhmWithAtm),
+        vmin=fwhmVmin,
+        vmax=fwhmVmax,
     )
     ax.scatter(
         wavefrontData["fieldAngles"][:, 0],
         -wavefrontData["fieldAngles"][:, 1],
         c=cornersFwhmWithAtm,
         s=50,
-        vmin=vmin + np.median(cornersFwhmWithAtm),
-        vmax=vmax + np.median(cornersFwhmWithAtm),
+        vmin=fwhmVmin,
+        vmax=fwhmVmax,
     )
     circle = Circle((0, 0), 1.75, color="red", fill=False, linestyle="--")
     ax.add_patch(circle)
@@ -512,8 +515,8 @@ def makeDofPredictedFWHMPlot(
         table["aa_y"],
         c=table["FWHM"],
         s=9,
-        vmin=vmin + np.median(table["FWHM"]),
-        vmax=vmax + np.median(table["FWHM"]),
+        vmin=fwhmVmin,
+        vmax=fwhmVmax,
     )
     circle = Circle((0, 0), 1.75, color="red", fill=False, linestyle="--")
     ax.add_patch(circle)

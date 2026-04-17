@@ -407,7 +407,7 @@ class SpectralFocusAnalyzer:
         legendFontSize = 12
         labelFontSize = 14
 
-        arcminToPixel = 10
+        pixelsPerArcsec = 10
         sigmaToFwhm = 2.355
 
         f, axes = plt.subplots(2, 1, figsize=[10, 12])
@@ -422,7 +422,9 @@ class SpectralFocusAnalyzer:
             thisColor = np.array([self.COLORS[spectrumSlice]])
 
             amps = [data[seqNum][spectrumSlice].amp for seqNum in seqNums]
-            widths = [data[seqNum][spectrumSlice].sigma / arcminToPixel * sigmaToFwhm for seqNum in seqNums]
+            widths = [
+                data[seqNum][spectrumSlice].sigma / pixelsPerArcsec * sigmaToFwhm for seqNum in seqNums
+            ]
 
             pointsForLegend[spectrumSlice] = axes[0].scatter(focusPositions, amps, c=thisColor)
             axes[0].set_xlabel("Focus position (mm)", fontsize=labelFontSize)
@@ -712,13 +714,13 @@ class NonSpectralFocusAnalyzer:
 
         labelFontSize = 14
 
-        arcminToPixel = 10
+        pixelsPerArcsec = 10
 
         fig = plt.figure(figsize=(10, 10))  # noqa
         gs = gridspec.GridSpec(2, 1, height_ratios=[1, 1])
 
         seqNums = sorted(fitData.keys())
-        widths = [fitData[seqNum]["fitResult"].sigma * SIGMATOFWHM / arcminToPixel for seqNum in seqNums]
+        widths = [fitData[seqNum]["fitResult"].sigma * SIGMATOFWHM / pixelsPerArcsec for seqNum in seqNums]
         focusPositions = [fitData[seqNum]["focus"] for seqNum in seqNums]
         fineXs = np.linspace(np.min(focusPositions), np.max(focusPositions), 101)
 

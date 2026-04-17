@@ -344,8 +344,8 @@ class RingssSeeingMonitor:
         # Ensure the timestamp is sorted
         data.sort_index(inplace=True)
 
-        # Convert the astropy Time object to a timezone-aware pandas Timestamp
-        # so comparisons against ``data.index`` (a tz-aware DatetimeIndex) work.
+        # Convert the astropy Time object to a tz-aware pandas Timestamp
+        # so comparisons against ``data.index`` work.
         time_datetime = pd.Timestamp(time.datetime).tz_localize("UTC")
 
         # Check if the *exact* time exists - seems unlikely, but need to check

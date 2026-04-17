@@ -285,7 +285,7 @@ def countOverThresholdPixels(cutout: np.ndarray, bgMean: float, bgStd: float, nS
     nPix : `int`
         The number of pixels above threshold.
     """
-    inds = np.where(cutout > (bgMean + 0 * bgStd))
+    inds = np.where(cutout > (bgMean + nSigma * bgStd))
     return len(inds[0])
 
 

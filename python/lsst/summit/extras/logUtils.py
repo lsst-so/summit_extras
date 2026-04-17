@@ -20,7 +20,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import logging
-import math
 
 import lsst.daf.butler as dafButler
 
@@ -312,7 +311,7 @@ class LogBrowser:
         if not giveExampleId:
             if zoo.values():
                 maxCount = max([v for v in zoo.values()])
-                pad = math.ceil(math.log10(maxCount))  # number of digits in the largest count
+                pad = len(str(maxCount))  # number of digits in the largest count
 
         for error in sorted(zoo.keys()):
             count = zoo[error]

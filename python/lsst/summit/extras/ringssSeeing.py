@@ -137,8 +137,14 @@ class SeeingConditions:
         -------
         angle : `float`
             The isoparalactic angle.
+
+        Raises
+        ------
+        NotImplementedError
+            Always raised; there is no corresponding RINGSS field
+            available in the EFD topic yet.
         """
-        return self.isoparalacticAngle
+        raise NotImplementedError("isoparalacticAngle is not available from the RINGSS EFD topic")
 
     @property
     def starName(self) -> str:

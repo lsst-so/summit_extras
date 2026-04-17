@@ -84,7 +84,7 @@ COMMANDS_TO_QUERY = [
     "lsst.sal.MTM1M3.command_clearSlewFlag",
     "lsst.sal.MTM1M3.command_setSlewControllerSettings",
     "lsst.sal.MTM1M3.command_setSlewFlag",
-    "lsst.sal.MTM1M3.logevent_slewControllerSettings"
+    "lsst.sal.MTM1M3.logevent_slewControllerSettings",
     # MTCamera
     "lsst.sal.MTCamera.logevent_startIntegration",
     "lsst.sal.MTCamera.logevent_startLoadFilter",

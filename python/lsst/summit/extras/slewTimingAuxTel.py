@@ -246,7 +246,7 @@ def plotExposureTiming(
         startExposing = record.timespan.begin.utc.datetime
         endExposing = record.timespan.end.utc.datetime
 
-        readoutEnd = (record.timespan.end + READOUT_TIME).utc.to_value("isot")
+        readoutEnd = (record.timespan.end + READOUT_TIME).utc.datetime
         seqNum = record.seq_num
         for axName, ax in axes.items():
             ax.axvspan(startExposing, endExposing, color=integrationColor, alpha=0.3)

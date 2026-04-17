@@ -148,14 +148,14 @@ class SeeingConditions:
 
     @property
     def starName(self) -> str:
-        """HD-prefixed name of the RINGSS target star.
+        """HR-prefixed name of the RINGSS target star.
 
         Returns
         -------
         name : `str`
-            The star name, e.g. ``"HD12345"``.
+            The star name, e.g. ``"HR1234"``.
         """
-        return f"HD{self.starName}"
+        return f"HR{int(self.hrNum)}"
 
     @property
     def seeing(self) -> float:

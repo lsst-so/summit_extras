@@ -269,9 +269,9 @@ class LogBrowser:
                 # print the last line from the Exception onwards if found,
                 # failing over to printing the whole thing just in case.
                 msg = log[-1].message
-                parts = msg.split("Exception ")
-                if len(parts) == 2:
-                    print(parts[1])
+                head, sep, tail = msg.partition("Exception ")
+                if sep:
+                    print(tail)
                 else:
                     print(msg)
 
@@ -292,12 +292,12 @@ class LogBrowser:
         for dataRef in fails:
             log = self.logs[dataRef]
             msg = log[-1].message  # log[-1].message is the text of the last line of the log
-            parts = msg.split("Exception ")
-            if len(parts) != 2:  # pretty sure all fails contain one and only one 'Exception' but be safe
+            head, sep, tail = msg.partition("Exception ")
+            if not sep:
                 self.log.warning(f"Surprise parsing log for {dataRef.dataId}")
                 continue
             else:
-                error = parts[1]
+                error = tail
                 for error_string in self.SPECIAL_ZOO_CASES:
                     if error.find(error_string) != -1:
                         error = error.split(error_string)[0] + error_string + "..."
@@ -345,8 +345,8 @@ class LogBrowser:
                 self._printLineIf(line)
         else:
             msg = log[-1].message  # log[-1].message is the text of the last line of the log
-            parts = msg.split("Exception ")
-            if len(parts) == 2:
-                print(parts[1])
+            head, sep, tail = msg.partition("Exception ")
+            if sep:
+                print(tail)
             else:
                 print(msg)

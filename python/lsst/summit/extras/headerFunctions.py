@@ -154,7 +154,9 @@ def _hashFile(fileToHash: Any, dataHdu: int | str, sliceToUse: slice) -> str:
     hashStr : `str`
         Hex-encoded SHA-256 digest of the sliced data.
     """
-    data = fileToHash[dataHdu].data[sliceToUse, sliceToUse].tobytes()
+    # Cast to a fixed dtype so an all-zero array hashes to ZERO_HASH
+    # regardless of the HDU's native pixel dtype.
+    data = fileToHash[dataHdu].data[sliceToUse, sliceToUse].astype(np.int32).tobytes()
     h = _hashData(data)
     return h
 

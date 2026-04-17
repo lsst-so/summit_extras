@@ -198,10 +198,7 @@ class Annotations:
             List of matching ``(dayObs, seqNum)`` tuples.
         """
         if exactMatches:
-            return [
-                dId
-                for (dId, tag) in self.tags.items()
-                if (all(t in tag for t in tags.upper()) and (len(tags) == len(tag)))
-            ]
+            wanted = set(tags.upper())
+            return [dId for (dId, tag) in self.tags.items() if set(tag) == wanted]
         else:
             return [dId for (dId, tag) in self.tags.items() if all(t in tag for t in tags.upper())]

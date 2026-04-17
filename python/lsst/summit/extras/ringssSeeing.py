@@ -544,12 +544,26 @@ class RingssSeeingMonitor:
                 utc_time = utc_time.replace(tzinfo=utc)
             return utc_time.astimezone(chile_tz)
 
-        df.index = pd.DatetimeIndex([t for t in df.index])
+        times = pd.DatetimeIndex([t for t in df.index])
 
-        ax1.plot([seeing.fwhmFree for seeing in seeings], "b", label='Free atmos. seeing"', ls=ls, marker=ms)
-        ax1.plot([seeing.seeing for seeing in seeings], "r", label='Seeing "', ls=ls, marker=ms)
         ax1.plot(
-            [seeing.seeing2 for seeing in seeings], "g", label='Profile adjusted seeing "', ls=ls, marker=ms
+            times,
+            [seeing.fwhmFree for seeing in seeings],
+            "b",
+            label='Free atmos. seeing"',
+            ls=ls,
+            marker=ms,
+        )
+        ax1.plot(
+            times, [seeing.seeing for seeing in seeings], "r", label='Seeing "', ls=ls, marker=ms
+        )
+        ax1.plot(
+            times,
+            [seeing.seeing2 for seeing in seeings],
+            "g",
+            label='Profile adjusted seeing "',
+            ls=ls,
+            marker=ms,
         )
 
         ax2 = ax1.twiny()

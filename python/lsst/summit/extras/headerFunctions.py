@@ -338,7 +338,7 @@ def keyValuesSetFromFiles(
     if printPerFile and (len(fileList) * len(keys) > 200):
         print(f"You asked to print headers per-file, for {len(fileList)} files x {len(keys)} keys.")
         cont = input("Are you sure? Press y to continue, anything else to quit:")
-        if cont.lower()[0] != "y":
+        if not cont or cont.lower()[0] != "y":
             exit()
 
     headerDict, hashDict = buildHashAndHeaderDicts(fileList, libraryLocation=libraryLocation)
@@ -443,7 +443,7 @@ def compareHeaders(filename1: str, filename2: str) -> None:
         print("Pixel data was not the same - did you really mean to compare these files?")
         print(f"{filename1}\n{filename2}")
         cont = input("Press y to continue, anything else to quit:")
-        if cont.lower()[0] != "y":
+        if not cont or cont.lower()[0] != "y":
             exit()
 
     # you might think you don't want to always call sorted() on the key sets

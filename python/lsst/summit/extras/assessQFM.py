@@ -101,19 +101,21 @@ class AssessQFM:
         }
 
     def run(self, nSamples: int | None = None, nProcesses: int = 1, outputFile: str | None = None) -> None:
-        """Run quickFrameMeasurement on a sample dataset, save the new results,
-        and compare them with the baseline, vetted by-eye results.
+        """Run quickFrameMeasurement on a sample dataset and compare the
+        new results with the baseline, by-eye vetted results.
 
         Parameters
         ----------
-        nSamples : `int`
-            Number of exposures to check. If nSamples is greater than the
-            number of exposures in the vetted dataset, will check all.
-        nProcesses : `int`
-            Number of threads to use. If greater than one, multithreading will
-            be used.
-        outputFile : `str`
-            Name of the output file.
+        nSamples : `int`, optional
+            Number of exposures to check. If greater than the number of
+            exposures in the vetted dataset, all will be checked. If
+            `None` (default), all exposures are checked.
+        nProcesses : `int`, optional
+            Number of worker processes to use. If greater than one,
+            multiprocessing is used.
+        outputFile : `str`, optional
+            If provided, write the new QuickFrameMeasurement results to
+            this Parquet file.
         """
 
         if nSamples is not None:

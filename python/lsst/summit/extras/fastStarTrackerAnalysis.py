@@ -62,7 +62,12 @@ __all__ = (
 
 @dataclass(slots=True)
 class Source:
-    """A dataclass for FastStarTracker analysis results."""
+    """A single fast star tracker source-measurement result.
+
+    Holds the raw centroid and flux derived from the footprint, plus
+    the results of the galsim HSM adaptive-moments fit, along with
+    metadata describing the parent image and exposure.
+    """
 
     dayObs: int  # mandatory attribute - the dayObs
     seqNum: int  # mandatory attribute - the seqNum
@@ -92,7 +97,17 @@ class Source:
     expTime: float = np.nan
 
     def __repr__(self) -> str:
-        """Print everything except the full details of the moments."""
+        """Return a concise multi-line summary of this `Source`.
+
+        Floats are rounded to three decimal places and the full
+        contents of the ``moments``, ``bbox``, and ``cutout`` slots
+        are replaced with their types to avoid flooding logs.
+
+        Returns
+        -------
+        summary : `str`
+            The human-readable summary.
+        """
         retStr = ""
         for itemName in self.__slots__:
             v = getattr(self, itemName)
@@ -113,6 +128,13 @@ class Source:
 
 
 class NanSource:
+    """Stand-in for `Source` used when no detections are present.
+
+    Every attribute access returns ``numpy.nan`` so that downstream
+    plotting and aggregation code can treat empty images uniformly
+    without special-casing.
+    """
+
     def __getattribute__(self, name: str) -> float:
         return np.nan
 
@@ -130,9 +152,16 @@ def getStreamingSequences(dayObs: int) -> dict[int, list[str]]:
 
     Returns
     -------
-    sequences : `dict` [`int`, `list`]
-        The streaming sequences in a dict, keyed by sequence number, with each
-        value being a list of the files in that sequence.
+    sequences : `dict` [`int`, `list` [`str`]]
+        The streaming sequences in a dict, keyed by sequence number,
+        with each value being the sorted list of fits files in that
+        sequence.
+
+    Raises
+    ------
+    ValueError
+        Raised when running at a site where the StarTracker raw data
+        layout is not known.
     """
     site = getSite()
     if site in ["rubin-devl", "staff-rsp"]:
@@ -488,10 +517,17 @@ def plotSourceMovement(
 
     Returns
     -------
-    figs : `list` of `matplotlib.figure.Figure`
-        The figures. The first is the source's flux and x, y movement over the
-        image sequence, and the second is a scatter plot of the x and y, with
-        the color showing the position in the sequence.
+    figs : `list` [`matplotlib.figure.Figure`]
+        The figures. The first is the source's flux and x, y movement
+        over the image sequence, and the second is a scatter plot of
+        x vs. y, with the color showing the position in the sequence.
+
+    Raises
+    ------
+    ValueError
+        Raised if the supplied ``results`` are inconsistent (unless
+        ``allowInconsistent`` is `True`) or if the sources span
+        multiple dayObs or seqNum values.
     """
     opts = {
         "marker": "o",
@@ -591,16 +627,15 @@ def plotSourcesOnImage(
     parentFilename: str,
     sources: Source | list[Source],
 ) -> None:
-    """Plot one of more source on top of an image.
+    """Plot one or more sources overlaid on their parent image.
 
     Parameters
     ----------
     parentFilename : `str`
-        The full path to the parent (.tif) file.
-    sources : `list` of
-              `lsst.summit.extras.fastStarTrackerAnalysis.Source` or
-              `lsst.summit.extras.fastStarTrackerAnalysis.Source`
-        The sources found in the image.
+        The full path to the parent FITS file.
+    sources : `lsst.summit.extras.fastStarTrackerAnalysis.Source` or \
+              `list` [`lsst.summit.extras.fastStarTrackerAnalysis.Source`]
+        The source or sources found in the image.
     """
     exp = openFile(parentFilename)
     data = exp.image.array
@@ -630,12 +665,18 @@ def plotSourcesOnImage(
 
 
 def plotSource(source: Source) -> None:
-    """Plot a single source.
+    """Plot a single source's cutout with its fitted centroid marked.
 
     Parameters
     ----------
     source : `lsst.summit.extras.fastStarTrackerAnalysis.Source`
-        The source to plot.
+        The source to plot. Must have been measured with
+        ``attachCutouts=True`` in `findFastStarTrackerImageSources`.
+
+    Raises
+    ------
+    RuntimeError
+        Raised if the source has no attached cutout.
     """
     if source.cutout is None:
         raise RuntimeError(

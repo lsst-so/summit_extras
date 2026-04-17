@@ -103,9 +103,12 @@ def getMountPositionData(
 
     Returns
     -------
-    alt, ax, rot : `tuple` of `pd.DataFrame`
-        A tuple containing the azimuth, elevation, and rotation data as
-        dataframes.
+    az : `pandas.DataFrame`
+        Azimuth encoder time series.
+    el : `pandas.DataFrame`
+        Elevation encoder time series.
+    rot : `pandas.DataFrame`
+        Nasmyth (rotation) encoder time series.
     """
     mountPosition = getEfdData(
         client,
@@ -137,6 +140,27 @@ def getAxesInPosition(
     prePadding: float = 0,
     postPadding: float = 0,
 ) -> pd.DataFrame:
+    """Return the ATMCS ``allAxesInPosition`` transitions for a window.
+
+    Parameters
+    ----------
+    client : `lsst_efd_client.EfdClient`
+        The EFD client used to retrieve the data.
+    begin : `astropy.time.Time`
+        The start time of the query window.
+    end : `astropy.time.Time`
+        The end time of the query window.
+    prePadding : `float`, optional
+        Seconds of padding before ``begin``.
+    postPadding : `float`, optional
+        Seconds of padding after ``end``.
+
+    Returns
+    -------
+    transitions : `pandas.DataFrame`
+        DataFrame of ``lsst.sal.ATMCS.logevent_allAxesInPosition``
+        events, indexed by time with a boolean ``inPosition`` column.
+    """
     return getEfdData(
         client,
         "lsst.sal.ATMCS.logevent_allAxesInPosition",
@@ -154,29 +178,29 @@ def plotExposureTiming(
     prePadding: float = 1,
     postPadding: float = 3,
 ) -> matplotlib.figure.Figure:
-    """Plot the mount command timings for a set of exposures.
+    """Plot the AuxTel mount command timings for a set of exposures.
 
-    This function plots the mount position data for the entire time range of
-    the exposures, regardless of whether the exposures are contiguous or not.
-    The exposures are shaded in the plot to indicate the time range for each
-    integration its readout, and any commands issued during the time range are
-    plotted as vertical lines.
+    Plots the mount position data for the entire time range of the
+    exposures, regardless of whether the exposures are contiguous.
+    Exposure integration and readout windows are shaded, and any
+    commands and in-position transitions within the time range are
+    overplotted as vertical lines.
 
     Parameters
     ----------
-    client : `EfdClient`
+    client : `lsst_efd_client.EfdClient`
         The client object used to retrieve EFD data.
-    expRecords : `list` of `lsst.daf.butler.DimensionRecord`
-        A list of exposure records to plot. The timings will be plotted from
-        the start of the first exposure to the end of the last exposure,
+    expRecords : `list` [`lsst.daf.butler.DimensionRecord`]
+        Exposure records to plot. The time axis spans from the start
+        of the first exposure to the end of the last exposure,
         regardless of whether intermediate exposures are included.
     plotHexapod : `bool`, optional
-        Plot the ATAOS.logevent_hexapodCorrectionStarted and
-        ATAOS.logevent_hexapodCorrectionCompleted transitions?
+        If `True`, overplot ``ATAOS.logevent_hexapodCorrectionStarted``
+        and ``ATAOS.logevent_hexapodCorrectionCompleted`` transitions.
     prePadding : `float`, optional
-        The amount of time to pad before the start of the first exposure.
+        Seconds of padding before the start of the first exposure.
     postPadding : `float`, optional
-        The amount of time to pad after the end of the last exposure.
+        Seconds of padding after the end of the last exposure.
 
     Returns
     -------
@@ -325,7 +349,9 @@ def plotExposureTiming(
 if __name__ == "__main__":
     # example usage
     import lsst.summit.utils.butlerUtils as butlerUtils  # noqa: F811
-    from lsst.summit.extras.slewTiming import plotExposureTiming as plotExposureTiming  # type: ignore[no-redef] # noqa: F811
+    from lsst.summit.extras.slewTiming import (  # type: ignore[no-redef] # noqa: F811
+        plotExposureTiming as plotExposureTiming,
+    )
     from lsst.summit.utils.efdUtils import makeEfdClient
 
     client = makeEfdClient()

@@ -53,59 +53,58 @@ RINGSS_TOPIC = "lsst.sal.ESS.logevent_ringssMeasurement"
 
 @dataclass
 class SeeingConditions:
-    """Class to hold the seeing conditions from the RINGSS instrument.
+    """A single snapshot of RINGSS seeing conditions.
+
+    Values are either taken directly from a RINGSS EFD row or linearly
+    interpolated between two rows bracketing a requested time. All
+    numeric attributes default to NaN when the underlying column was
+    missing.
 
     Attributes
     ----------
-    timestamp : `Time`
-        The time of the seeing conditions.
-    XXX : `timeDelta`
-        Distance to the nearest actual reading, given to give a guide for
-        how accurate the data is likely to be.
-    seeing : `float`
-        XXX fill this in
-    freeAtmSeeing : `float`
-        XXX fill this in
-    groundLayer : `float`
-        XXX fill this in
+    timestamp : `astropy.time.Time`
+        The time to which these conditions apply. For an interpolated
+        instance this is the midpoint between the two source rows.
     eRMS : `float`
-        XXX fill this in
+        Residual defocus signature RMS reported by RINGSS.
     flux : `float`
-        XXX fill this in
+        Measured flux from the RINGSS target star, in instrumental
+        units.
     fwhmFree : `float`
-        XXX fill this in
+        Free-atmosphere seeing FWHM, in arcsec.
     fwhmScintillation : `float`
-        XXX fill this in
+        Scintillation-derived total seeing FWHM, in arcsec.
     fwhmSector : `float`
-        XXX fill this in
+        Profile-weighted sector seeing FWHM, in arcsec.
     hrNum : `float`
-        XXX fill this in
+        RINGSS star HR number.
     tau0 : `float`
-        XXX fill this in
+        Atmospheric coherence time, in ms.
     theta0 : `float`
-        XXX fill this in
+        Isoplanatic angle, in arcsec.
     totalVariance : `float`
-        XXX fill this in
-    turbulenceProfiles0 : `float`
-        XXX fill this in
-    turbulenceProfiles1 : `float`
-        XXX fill this in
-    turbulenceProfiles2 : `float`
-        XXX fill this in
-    turbulenceProfiles3 : `float`
-        XXX fill this in
-    turbulenceProfiles4 : `float`
-        XXX fill this in
-    turbulenceProfiles5 : `float`
-        XXX fill this in
-    turbulenceProfiles6 : `float`
-        XXX fill this in
-    turbulenceProfiles7 : `float`
-        XXX fill this in
-    wind : `float`
-        XXX fill this in
+        Total variance of the wavefront signal.
+    profile0m : `float`
+        Turbulence integral at the ground layer (0 m).
+    profile250m : `float`
+        Turbulence integral at 250 m.
+    profile500m : `float`
+        Turbulence integral at 500 m.
+    profile1000m : `float`
+        Turbulence integral at 1 km.
+    profile2000m : `float`
+        Turbulence integral at 2 km.
+    profile4000m : `float`
+        Turbulence integral at 4 km.
+    profile8000m : `float`
+        Turbulence integral at 8 km.
+    profile16000m : `float`
+        Turbulence integral at 16 km.
+    windSpeed : `float`
+        Wind speed at the turbulence layer, in m/s.
     zenithDistance : `float`
-        XXX fill this in
+        Zenith distance of the RINGSS target at the measurement time,
+        in degrees.
     """
 
     timestamp: Time
@@ -132,33 +131,73 @@ class SeeingConditions:
 
     @property
     def isoparalacticAngle(self) -> float:
-        """Alias for isoparalacticAngle."""
+        """Isoparalactic angle, in arcsec.
+
+        Returns
+        -------
+        angle : `float`
+            The isoparalactic angle.
+        """
         return self.isoparalacticAngle
 
     @property
     def starName(self) -> str:
-        """Alias for starName including the HD part."""
+        """HD-prefixed name of the RINGSS target star.
+
+        Returns
+        -------
+        name : `str`
+            The star name, e.g. ``"HD12345"``.
+        """
         return f"HD{self.starName}"
 
     @property
     def seeing(self) -> float:
-        """Alias for fwhmScintillation - the seeing in arcsec."""
+        """Scintillation-derived total seeing FWHM, in arcsec.
+
+        Returns
+        -------
+        seeing : `float`
+            Alias for `fwhmScintillation`.
+        """
         return self.fwhmScintillation
 
     @property
     def seeing2(self) -> float:
-        """The seeing profile adjusted weight in arcsec."""
+        """Profile-weighted seeing FWHM, in arcsec.
+
+        Returns
+        -------
+        seeing : `float`
+            Alias for `fwhmSector`.
+        """
         return self.fwhmSector
 
     @property
     def freeAtmosphericSeeing(self) -> float:
-        """Alias for fwhmFree - the free atmospheric seeing in arcsec."""
+        """Free-atmosphere seeing FWHM, in arcsec.
+
+        Returns
+        -------
+        seeing : `float`
+            Alias for `fwhmFree`.
+        """
         return self.fwhmFree
 
     @property
     def groundLayerSeeing(self) -> float:
-        """The transformation of turbulenceProfiles0 to the ground layer seeing
-        in arcsec.
+        """Ground-layer seeing FWHM in arcsec.
+
+        Returns
+        -------
+        seeing : `float`
+            The seeing contribution from the ground layer.
+
+        Raises
+        ------
+        NotImplementedError
+            Always raised; the conversion from the turbulence
+            integral at 0 m to arcsec is not yet implemented.
         """
         raise NotImplementedError("I need the transormation to get this value in arcsec")
 
@@ -245,6 +284,21 @@ class SeeingConditions:
 
 
 class RingssSeeingMonitor:
+    """Query and plot RINGSS seeing data from the EFD.
+
+    Parameters
+    ----------
+    efdClient : `lsst_efd_client.EfdClient`
+        Client used to query the EFD for RINGSS data.
+    warningThreshold : `float`, optional
+        Interpolation interval, in seconds, above which a warning is
+        logged when returning interpolated seeing conditions.
+    errorThreshold : `float`, optional
+        Interpolation interval, in seconds, above which an interpolated
+        value is refused outright. Also used as the search half-window
+        when looking for the nearest RINGSS measurement.
+    """
+
     def __init__(
         self, efdClient: EfdClient, warningThreshold: float = 300, errorThreshold: float = 600
     ) -> None:

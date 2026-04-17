@@ -173,6 +173,25 @@ inPositionTopics = {
 
 
 def getAxisName(topic: str) -> str:
+    """Classify an EFD topic into the axis subplot it belongs on.
+
+    Parameters
+    ----------
+    topic : `str`
+        Fully-qualified EFD topic name (e.g.
+        ``lsst.sal.MTMount.logevent_azimuthInPosition``).
+
+    Returns
+    -------
+    axisName : `str`
+        One of ``dome``, ``el``, ``az``, ``rot``, ``camera``,
+        ``mount``, or ``aos``.
+
+    Raises
+    ------
+    ValueError
+        Raised if the topic does not match any known axis.
+    """
     # Note the order here matters, e.g. cameraCableWrap is a substring of
     # MTMount so it should be checked first, likewise axes are special cases
     # of the MTMount so should be checked first.
@@ -268,33 +287,45 @@ def plotExposureTiming(
     narrowHeightRatio: float = 0.4,
     figure: Figure | None = None,
 ) -> Figure | None:
-    """Plot the mount command timings for a set of exposures.
+    """Plot the mount command timings for a set of Simonyi exposures.
 
-    This function plots the mount position data for the entire time range of
-    the exposures, regardless of whether the exposures are contiguous or not.
-    The exposures are shaded in the plot to indicate the time range for each
-    integration its readout, and any commands issued during the time range are
-    plotted as vertical lines.
+    Plots the mount position data for the entire time range of the
+    exposures, regardless of whether the exposures are contiguous.
+    Exposure integration and readout windows are shaded, and any
+    commands, in-position transitions, and telescope-vignetted
+    transitions within the time range are plotted as vertical lines.
 
     Parameters
     ----------
-    client : `EfdClient`
+    client : `lsst_efd_client.EfdClient`
         The client object used to retrieve EFD data.
-    expRecords : `list` of `lsst.daf.butler.DimensionRecord`
-        A list of exposure records to plot. The timings will be plotted from
-        the start of the first exposure to the end of the last exposure,
-        regardless of whether intermediate exposures are included.
+    expRecords : `list` [`lsst.daf.butler.DimensionRecord`]
+        A list of exposure records to plot. The time axis spans from
+        the start of the first exposure to the end of the last
+        exposure, regardless of whether intermediate exposures are
+        included. All records must share a single ``day_obs``.
     prePadding : `float`, optional
-        The amount of time to pad before the start of the first exposure.
+        Seconds of padding before the start of the first exposure.
     postPadding : `float`, optional
-        The amount of time to pad after the end of the last exposure.
+        Seconds of padding after the end of the last exposure.
     narrowHeightRatio : `float`, optional
-        Height ratio for narrow panels (mount, dome, camera, aos) relative
-        to wide ones.
+        Height ratio for narrow panels (mount, camera, aos) relative
+        to the wide telemetry panels.
+    figure : `matplotlib.figure.Figure`, optional
+        If provided, the plot is rendered onto this figure instead of
+        creating a new one. A warning is logged because the figure
+        size differs from the recommended default.
+
     Returns
     -------
     fig : `matplotlib.figure.Figure` or `None`
-        The figure containing the plot, or `None` if no data is found.
+        The figure containing the plot, or `None` if no mount data
+        was found for the requested time range.
+
+    Raises
+    ------
+    ValueError
+        Raised if ``expRecords`` spans more than one ``day_obs``.
     """
     log = logging.getLogger(__name__)
 
@@ -532,7 +563,12 @@ def plotExposureTiming(
         if command not in color_maps[axisName]:
             color_maps[axisName][command] = next(color_iterators[axisName])
         color = color_maps[axisName][command]
-        axes[axisName].axvline(time, linestyle="-.", alpha=commandAlpha, color=color)  # type: ignore[arg-type]
+        axes[axisName].axvline(
+            time,  # type: ignore[arg-type]
+            linestyle="-.",
+            alpha=commandAlpha,
+            color=color,
+        )
 
         # Add to legend entries if not already there
         shortCommand = command.replace("lsst.sal.", "")

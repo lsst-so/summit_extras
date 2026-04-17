@@ -432,10 +432,10 @@ class SpectralFocusAnalyzer:
             axes[1].set_ylabel("FWHM (arcsec)", fontsize=labelFontSize)
 
             quadFitPars = np.polyfit(focusPositions, widths, 2)
+            fitMin = -quadFitPars[1] / (2.0 * quadFitPars[0])
+            bestFits.append(fitMin)
             if not hideFit:
                 axes[1].plot(fineXs, np.poly1d(quadFitPars)(fineXs), c=self.COLORS[spectrumSlice])
-                fitMin = -quadFitPars[1] / (2.0 * quadFitPars[0])
-                bestFits.append(fitMin)
                 axes[1].axvline(fitMin, color=self.COLORS[spectrumSlice])
                 msg = f"Best focus offset = {np.round(fitMin, 2)}"
                 axes[1].text(

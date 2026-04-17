@@ -239,4 +239,5 @@ class Monitor:
 
             except NotFoundError as e:  # NotFoundError when filters aren't defined
                 print(f"Skipped displaying due to {e}")
+            sleep(self.cadence)
         return

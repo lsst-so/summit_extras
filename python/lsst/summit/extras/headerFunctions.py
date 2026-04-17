@@ -259,13 +259,12 @@ def buildHashAndHeaderDicts(
     return headersDict, dataDict
 
 
-def sorted(inlist: set | list, replacementValue: str = "<BLANK VALUE>") -> list:
+def sortedAsStrings(inlist: set | list, replacementValue: str = "<BLANK VALUE>") -> list:
     """Sort a list, coercing all values to strings and handling blanks.
 
     Replaces any ``astropy.io.fits.card.Undefined`` entries with
     ``replacementValue`` so they sort consistently alongside mixed
-    string and integer values. This deliberately shadows the built-in
-    `sorted` in this module's namespace.
+    string and integer values.
 
     Parameters
     ----------
@@ -279,13 +278,10 @@ def sorted(inlist: set | list, replacementValue: str = "<BLANK VALUE>") -> list:
     output : `list` [`str`]
         Sorted list of string values.
     """
-    from builtins import sorted as _sorted
-
     output = [
         str(x) if not isinstance(x, astropy.io.fits.card.Undefined) else replacementValue for x in inlist
     ]
-    output = _sorted(output)
-    return output
+    return sorted(output)
 
 
 def keyValuesSetFromFiles(
@@ -397,11 +393,11 @@ def keyValuesSetFromFiles(
         if kValues is not None:
             for key in kValues.keys():
                 print(f"\nValues found for header key {key}:")
-                print(f"{sorted(kValues[key])}")
+                print(f"{sortedAsStrings(kValues[key])}")
 
         if joinKeys:
             print(f"\nValues found when joining {joinKeys}:")
-            print(f"{sorted(joinedValues)}")
+            print(f"{sortedAsStrings(joinedValues)}")
 
     if joinKeys:
         return kValues, joinedValues
@@ -458,12 +454,12 @@ def compareHeaders(filename1: str, filename2: str) -> None:
     commonKeys = set(h1Keys)
     commonKeys = commonKeys.intersection(h2Keys)
 
-    keysInh1NotInh2 = sorted([_ for _ in h1Keys if _ not in h2Keys])
-    keysInh2NotInh1 = sorted([_ for _ in h2Keys if _ not in h1Keys])
+    keysInh1NotInh2 = sortedAsStrings([_ for _ in h1Keys if _ not in h2Keys])
+    keysInh2NotInh1 = sortedAsStrings([_ for _ in h2Keys if _ not in h1Keys])
 
     print(f"Keys in {filename1} not in {filename2}:\n{keysInh1NotInh2}\n")
     print(f"Keys in {filename2} not in {filename1}:\n{keysInh2NotInh1}\n")
-    print(f"Keys in common:\n{sorted(commonKeys)}\n")
+    print(f"Keys in common:\n{sortedAsStrings(commonKeys)}\n")
 
     # put in lists so we can output neatly rather than interleaving
     identical = []
@@ -480,9 +476,9 @@ def compareHeaders(filename1: str, filename2: str) -> None:
         print("All keys in common have identical values :)")
     else:
         print("Of the common keys, the following had identical values:")
-        print(f"{sorted(identical)}\n")
+        print(f"{sortedAsStrings(identical)}\n")
         print("Common keys with differing values were:")
-        for key in sorted(differing):
+        for key in sortedAsStrings(differing):
             d = "<blank card>".ljust(25)
             v1 = str(h1[key]).ljust(25) if not isinstance(h1[key], astropy.io.fits.card.Undefined) else d
             v2 = str(h2[key]).ljust(25) if not isinstance(h2[key], astropy.io.fits.card.Undefined) else d

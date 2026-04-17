@@ -343,15 +343,16 @@ class RingssSeeingMonitor:
         # Ensure the timestamp is sorted
         data.sort_index(inplace=True)
 
+        # Convert the astropy Time object to a timezone-aware pandas Timestamp
+        # so comparisons against ``data.index`` (a tz-aware DatetimeIndex) work.
+        time_datetime = pd.Timestamp(time.datetime).tz_localize("UTC")
+
         # Check if the *exact* time exists - seems unlikely, but need to check
-        if time in data.index:
-            row = data.loc[time]
+        if time_datetime in data.index:
+            row = data.loc[time_datetime]
             return SeeingConditions(
                 rows=[row],
             )
-
-        # Convert the astropy Time object to a timezone-aware pandas Timestamp
-        time_datetime = pd.Timestamp(time.datetime).tz_localize("UTC")
 
         # Use the timezone-aware timestamp for comparison
         earlier = (
@@ -361,7 +362,11 @@ class RingssSeeingMonitor:
             data[data.index > time_datetime].iloc[0] if not data[data.index > time_datetime].empty else None
         )
 
-        if later is None and earlier is not None and (time - earlier.name).sec < self.errorThreshold:
+        if (
+            later is None
+            and earlier is not None
+            and (time_datetime - earlier.name).total_seconds() < self.errorThreshold
+        ):
             self.log.info("Returning the last available value.")
             return SeeingConditions(
                 rows=[earlier],
@@ -373,7 +378,7 @@ class RingssSeeingMonitor:
         # Check time difference: to log warnings/raise as necessary
         earlierTime = earlier.name
         laterTime = later.name
-        interval = (laterTime - earlierTime).seconds
+        interval = (laterTime - earlierTime).total_seconds()
 
         if interval > self.errorThreshold:
             raise ValueError(

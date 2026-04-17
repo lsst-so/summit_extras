@@ -166,8 +166,8 @@ def makeFocalPlaneFWHMPlot(
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label("FWHM (arcsec)")
 
-    plt.xlabel("Field Angle Y [deg]")
-    plt.ylabel("Field Angle X [deg]")
+    plt.xlabel("Field Angle X [deg]")
+    plt.ylabel("Field Angle Y [deg]")
     plt.axis("equal")
     plt.grid(True, alpha=0.3)
     if title:

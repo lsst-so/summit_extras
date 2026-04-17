@@ -162,21 +162,20 @@ class AssessQFM:
             }
 
             exp = self.butler.get(self.dataProduct, dataId=dataId)
-            qfmRes = qfmResults.loc[i]
 
             t1 = time.time()
             result = self.qfmTask.run(exp)
             t2 = time.time()
-            qfmRes["runtime"] = t2 - t1
+            qfmResults.at[i, "runtime"] = t2 - t1
 
             if result.success:
                 pixCoord = result.brightestObjCentroid
-                qfmRes["centroid_x"] = pixCoord[0]
-                qfmRes["centroid_y"] = pixCoord[1]
-                qfmRes["finalTag"] = "P"
+                qfmResults.at[i, "centroid_x"] = pixCoord[0]
+                qfmResults.at[i, "centroid_y"] = pixCoord[1]
+                qfmResults.at[i, "finalTag"] = "P"
 
             else:
-                qfmRes["finalTag"] = "F"
+                qfmResults.at[i, "finalTag"] = "F"
         return qfmResults
 
     def compareToBaseline(self, comparisonData: pd.DataFrame) -> None:

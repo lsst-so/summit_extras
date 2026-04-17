@@ -98,7 +98,7 @@ class LogBrowser:
         if self.bind is not None:
             for key in self.bind.keys():
                 if key not in self.where:
-                    self.log.warn(
+                    self.log.warning(
                         f"Key '{key}' in bind is not in the where string provided: "
                         f"'{self.where}', so no binding will take effect."
                     )

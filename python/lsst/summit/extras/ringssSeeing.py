@@ -555,9 +555,7 @@ class RingssSeeingMonitor:
             ls=ls,
             marker=ms,
         )
-        ax1.plot(
-            times, [seeing.seeing for seeing in seeings], "r", label='Seeing "', ls=ls, marker=ms
-        )
+        ax1.plot(times, [seeing.seeing for seeing in seeings], "r", label='Seeing "', ls=ls, marker=ms)
         ax1.plot(
             times,
             [seeing.seeing2 for seeing in seeings],

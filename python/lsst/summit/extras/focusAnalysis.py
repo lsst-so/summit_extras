@@ -326,9 +326,10 @@ class SpectralFocusAnalyzer:
                 exp.image.array[exp.image.array <= 0] = 0.001
                 axes[0].imshow(exp.image.array, norm=LogNorm(), origin="lower", cmap="gray_r")
                 plt.tight_layout()
-                arrowy, arrowx = centroid[0] - 400, centroid[1]  # numpy is backwards
-                dx, dy = 0, 300
-                arrow = Arrow(arrowy, arrowx, dy, dx, width=200.0, color="red")
+                arrowX = centroid[0] - 400
+                arrowY = centroid[1]
+                arrowDx, arrowDy = 300, 0
+                arrow = Arrow(arrowX, arrowY, arrowDx, arrowDy, width=200.0, color="red")
                 circle = Circle(centroid, radius=25, facecolor="none", edgecolor="red")
                 axes[0].add_patch(arrow)
                 axes[0].add_patch(circle)

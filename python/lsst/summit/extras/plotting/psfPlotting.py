@@ -637,7 +637,7 @@ def plotHigherOrderMomentsData(
         meanComa[i] = binning.params0
 
     meanComaAngle = np.arctan2(meanComa[2], meanComa[1])
-    meanComaAmplitude = np.hypot(meanComa[2], meanComa[2])
+    meanComaAmplitude = np.hypot(meanComa[1], meanComa[2])
     qComa = axs[0].quiver(
         binning.coords0[:, 0],
         binning.coords0[:, 1],

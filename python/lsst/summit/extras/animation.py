@@ -53,8 +53,46 @@ setupLogging()
 
 
 class Animator:
-    """Animate the list of dataIds in the order in which they are specified
-    for the data product specified."""
+    """Animate a list of dataIds into an mp4 movie.
+
+    Iterates over the dataIds in the order supplied, renders each
+    exposure for the specified data product as a PNG (caching PNGs in
+    ``outputPath/pngs/``), stages them in a temporary numbered
+    directory, and assembles them into an mp4 with ``ffmpeg``.
+
+    Parameters
+    ----------
+    butler : `lsst.daf.butler.Butler`
+        Butler with access to the specified data product.
+    dataIdList : `list` [`dict`]
+        DataIds to animate, in display order.
+    outputPath : `str`
+        Directory to write the mp4 and the ``pngs/`` cache directory
+        to. Created if it does not exist.
+    outputFilename : `str`
+        Base name of the output mp4. The ``.mp4`` suffix is appended
+        if missing.
+    remakePngs : `bool`, optional
+        If `True`, regenerate PNGs even when cached copies exist.
+    clobberVideoAndGif : `bool`, optional
+        If `True`, overwrite any existing output mp4. Otherwise raise
+        if the file already exists.
+    keepIntermediateGif : `bool`, optional
+        Retained for backwards compatibility. Currently unused;
+        intermediate gif generation is disabled.
+    smoothImages : `bool`, optional
+        If `True`, smooth the displayed image with a small Gaussian
+        (for display only; centroiding still uses the raw exposure).
+    plotObjectCentroids : `bool`, optional
+        If `True`, overlay the target star centroid on each frame.
+    useQfmForCentroids : `bool`, optional
+        If `True`, use QuickFrameMeasurement for the overlay centroid
+        instead of the WCS-based target lookup.
+    dataProductToPlot : `str`, optional
+        The butler dataset type to retrieve for each dataId.
+    debug : `bool`, optional
+        If `True`, emit extra debug logging.
+    """
 
     def __init__(
         self,
@@ -135,10 +173,27 @@ class Animator:
         return dIdStr
 
     def dataIdToFilename(self, dataId: dict, includeNumber: bool = False, imNum: int | None = None) -> str:
-        """Convert dataId to filename.
+        """Convert a dataId to a PNG filename.
 
-        Returns a full path+filename by default. if includeNumber then
-        returns just the filename for use in temporary dir for animation."""
+        Parameters
+        ----------
+        dataId : `dict`
+            The dataId to render.
+        includeNumber : `bool`, optional
+            If `True`, prepend a zero-padded frame number so that
+            alphabetical filename ordering matches the animation
+            order. In this mode the returned value is a bare filename
+            suitable for use inside the temporary staging directory.
+            Otherwise a full path inside ``self.pngPath`` is returned.
+        imNum : `int`, optional
+            Frame number used when ``includeNumber`` is `True`. Must
+            be provided in that case.
+
+        Returns
+        -------
+        filename : `str`
+            The PNG filename or full path, as described above.
+        """
         if includeNumber:
             assert imNum is not None
 
@@ -152,11 +207,37 @@ class Animator:
             return os.path.join(self.pngPath, filename)
 
     def exists(self, obj: Any) -> bool:
+        """Check whether a filesystem object exists.
+
+        Parameters
+        ----------
+        obj : `str`
+            The path to check.
+
+        Returns
+        -------
+        exists : `bool`
+            `True` if the path exists on disk.
+
+        Raises
+        ------
+        RuntimeError
+            Raised if ``obj`` is not a string; other existence checks
+            are not yet implemented.
+        """
         if isinstance(obj, str):
             return os.path.exists(obj)
         raise RuntimeError("Other type checks not yet implemented")
 
     def preRun(self) -> None:
+        """Prepare output directories and determine which PNGs to build.
+
+        Creates the PNG cache directory if missing, handles the output
+        mp4's pre-existence according to ``clobberVideoAndGif``, checks
+        the butler for each dataId's dataset, logs a summary, and
+        populates ``self.pngsToMakeDataIds`` with the dataIds whose
+        PNGs still need to be generated.
+        """
         # check the paths work
         if not os.path.exists(self.pngPath):
             os.makedirs(self.pngPath)
@@ -205,6 +286,14 @@ class Animator:
         logger.info(msg)
 
     def run(self) -> str | None:
+        """Render any missing PNGs and assemble the mp4 movie.
+
+        Returns
+        -------
+        outputFilename : `str` or `None`
+            Path to the produced mp4 file, or `None` if there were no
+            dataIds to animate.
+        """
         # make the missing pngs
         if self.pngsToMakeDataIds:
             logger.info("Creating necessary pngs...")
@@ -251,6 +340,22 @@ class Animator:
         return self.outputFilename
 
     def _titleFromExp(self, exp: afwImage.Exposure, dataId: dict) -> str:
+        """Build the plot title line for a single exposure.
+
+        Parameters
+        ----------
+        exp : `lsst.afw.image.Exposure`
+            The exposure being plotted (unused except to mirror the
+            display path).
+        dataId : `dict`
+            The dataId for which to look up observing metadata.
+
+        Returns
+        -------
+        title : `str`
+            Human-readable title including seqNum, timestamp, target,
+            exposure time, filter, grating, and airmass.
+        """
         expRecord = getExpRecordFromDataId(self.butler, dataId)
         obj = expRecord.target_name
         expTime = expRecord.exposure_time
@@ -273,6 +378,29 @@ class Animator:
     def getStarPixCoord(
         self, exp: Any, doMotionCorrection: bool = True, useQfm: bool = False
     ) -> tuple[float, float] | None:
+        """Return the main star's pixel centroid for an exposure.
+
+        If ``self.useQfmForCentroids`` is set, this runs
+        QuickFrameMeasurement on the exposure; otherwise the target
+        position is derived from the WCS and the named target.
+
+        Parameters
+        ----------
+        exp : `lsst.afw.image.Exposure`
+            The exposure to measure.
+        doMotionCorrection : `bool`, optional
+            If `True`, apply proper-motion correction when looking up
+            the target in the catalog.
+        useQfm : `bool`, optional
+            Unused; retained for API stability. Centroid source is
+            controlled by ``self.useQfmForCentroids``.
+
+        Returns
+        -------
+        pixCoord : `tuple` [`float`, `float`] or `None`
+            The ``(x, y)`` pixel coordinate of the main star, or
+            `None` if the measurement failed.
+        """
         target = exp.visitInfo.object
 
         if self.useQfmForCentroids:
@@ -288,6 +416,15 @@ class Animator:
         return pixCoord
 
     def makePng(self, dataId: dict, saveFilename: str) -> None:
+        """Render a single dataId to a PNG on disk.
+
+        Parameters
+        ----------
+        dataId : `dict`
+            The dataId to render.
+        saveFilename : `str`
+            Full path of the PNG to write.
+        """
         if self.exists(saveFilename) and not self.remakePngs:  # should not be possible due to prerun
             assert False, f"Almost overwrote {saveFilename} - how is this possible?"
 
@@ -339,7 +476,21 @@ class Animator:
         gc.collect()
 
     def pngsToMp4(self, indir: str, outfile: str, framerate: float, verbose: bool = False) -> None:
-        """Create the movie with ffmpeg, from files."""
+        """Assemble all PNGs in ``indir`` into an mp4 file via ffmpeg.
+
+        Parameters
+        ----------
+        indir : `str`
+            Directory whose ``*.png`` files will be globbed and
+            animated in alphabetical order.
+        outfile : `str`
+            Path of the mp4 file to write.
+        framerate : `float`
+            Frames per second for the output movie.
+        verbose : `bool`, optional
+            If `True`, run ffmpeg at ``info`` verbosity; otherwise
+            only errors are printed.
+        """
         # NOTE: the order of ffmpeg arguments *REALLY MATTERS*.
         # Reorder them at your own peril!
         pathPattern = f'"{os.path.join(indir, "*.png")}"'
@@ -377,14 +528,39 @@ class Animator:
         subprocess.check_call(r" ".join(cmd), shell=True)
 
     def tidyUp(self, tempDir: str) -> None:
+        """Remove the temporary staging directory.
+
+        Parameters
+        ----------
+        tempDir : `str`
+            Directory to remove, typically the staging directory
+            created inside ``self.pngPath``.
+        """
         shutil.rmtree(tempDir)
         return
 
     def _smoothExp(self, exp: afwImage.Exposure, smoothing: float, kernelSize: int = 7) -> afwImage.Exposure:
-        """Use for DISPLAY ONLY!
+        """Return a smoothed copy of an exposure. For DISPLAY ONLY.
 
-        Return a smoothed copy of the exposure
-        with the original mask plane in place."""
+        Convolves ``exp`` with a double-Gaussian kernel of the given
+        FWHM and kernel size, preserving the original mask plane on
+        the returned copy. Intended only for making on-screen images
+        legible; do not use for centroiding or measurement.
+
+        Parameters
+        ----------
+        exp : `lsst.afw.image.Exposure`
+            The exposure to smooth (not modified).
+        smoothing : `float`
+            FWHM of the smoothing kernel, in pixels.
+        kernelSize : `int`, optional
+            Size of the square convolution kernel, in pixels.
+
+        Returns
+        -------
+        newExp : `lsst.afw.image.Exposure`
+            A smoothed clone of ``exp`` with the original mask plane.
+        """
         psf = measAlg.DoubleGaussianPsf(kernelSize, kernelSize, smoothing / (2 * math.sqrt(2 * math.log(2))))
         newExp = exp.clone()
         originalMask = exp.mask
@@ -398,6 +574,25 @@ class Animator:
 def animateDay(
     butler: dafButler.Butler, dayObs: int, outputPath: str, dataProductToPlot: str = "quickLookExp"
 ) -> str | None:
+    """Animate all LATISS on-sky exposures from a single dayObs.
+
+    Parameters
+    ----------
+    butler : `lsst.daf.butler.Butler`
+        Butler with access to the LATISS data.
+    dayObs : `int`
+        The dayObs to animate (``YYYYMMDD``).
+    outputPath : `str`
+        Directory in which the mp4 and cached PNGs will be written.
+    dataProductToPlot : `str`, optional
+        Butler dataset type to render. Defaults to ``quickLookExp``.
+
+    Returns
+    -------
+    filename : `str` or `None`
+        Path to the produced mp4, or `None` if no on-sky dataIds were
+        found for the day.
+    """
     outputFilename = f"{dayObs}.mp4"
 
     onSkyIds = getLatissOnSkyDataIds(butler, startDate=dayObs, endDate=dayObs)  # type: ignore[arg-type]

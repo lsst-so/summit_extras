@@ -817,21 +817,19 @@ def makeFocalPlanePlot(
 ) -> None:
     """Plot the PSFs in focal plane (detector) coordinates i.e. the raw shapes.
 
-    Top left:
-        A scatter plot of the T values in square arcseconds.
-    Top right:
-        A quiver plot of e1 and e2
-    Bottom left:
-        A scatter plot of e1
-    Bottom right:
-        A scatter plot of e2
+    Layout of the 2x3 axes grid:
 
-    This function plots the data from the ``table`` on the provided ``fig`` and
-    ``axs`` objects. It also plots the camera detector outlines on the focal
-    plane plot, respecting the camera rotation for the exposure.
+    - top-left: quiver plot of spin-2 ellipticity
+    - top-middle: scatter plot of FWHM in arcsec
+    - top-right: histogram of FWHM with quartile annotations
+    - bottom-left: scatter plot of e1
+    - bottom-middle: scatter plot of e2
+    - bottom-right: histogram of |e| with quartile annotations
 
-    If ``saveAs`` is provided, the figure will be saved at the specified file
-    path.
+    The camera detector outlines (or raft shading for the full focal
+    plane) are drawn on the scatter panels, respecting the camera
+    rotation for the exposure. If ``saveAs`` is provided, the figure
+    is written to that file path.
 
     Parameters
     ----------
@@ -839,10 +837,10 @@ def makeFocalPlanePlot(
         The figure object to plot on.
     axs : `numpy.ndarray`
         The array of axes objects to plot on.
-    table : `numpy.ndarray`
+    table : `astropy.table.Table`
         The table containing the data to be plotted.
-    camera : `list`
-        The list of camera detector objects.
+    camera : `lsst.afw.cameraGeom.Camera`
+        Camera geometry used to draw detector outlines.
     physicalFilter : `str`
         The physical filter name to include in the plot title.
     maxPointsPerDetector : `int`, optional
@@ -942,21 +940,19 @@ def makeEquatorialPlot(
 ) -> None:
     """Plot the PSFs on the focal plane, rotated to equatorial coordinates.
 
-    Top left:
-        A scatter plot of the T values in square arcseconds.
-    Top right:
-        A quiver plot of e1 and e2
-    Bottom left:
-        A scatter plot of e1
-    Bottom right:
-        A scatter plot of e2
+    Layout of the 2x3 axes grid:
 
-    This function plots the data from the ``table`` on the provided ``fig`` and
-    ``axs`` objects. It also plots the camera detector outlines on the focal
-    plane plot, respecting the camera rotation for the exposure.
+    - top-left: quiver plot of spin-2 ellipticity
+    - top-middle: scatter plot of FWHM in arcsec
+    - top-right: histogram of FWHM with quartile annotations
+    - bottom-left: scatter plot of e1
+    - bottom-middle: scatter plot of e2
+    - bottom-right: histogram of |e| with quartile annotations
 
-    If ``saveAs`` is provided, the figure will be saved at the specified file
-    path.
+    The camera detector outlines (or raft shading for the full focal
+    plane) are drawn on the scatter panels, respecting the camera
+    rotation for the exposure. If ``saveAs`` is provided, the figure
+    is written to that file path.
 
     Parameters
     ----------
@@ -964,10 +960,10 @@ def makeEquatorialPlot(
         The figure object to plot on.
     axs : `numpy.ndarray`
         The array of axes objects to plot on.
-    table : `numpy.ndarray`
+    table : `astropy.table.Table`
         The table containing the data to be plotted.
-    camera : `list`
-        The list of camera detector objects.
+    camera : `lsst.afw.cameraGeom.Camera`
+        Camera geometry used to draw detector outlines.
     physicalFilter : `str`
         The physical filter name to include in the plot title.
     maxPointsPerDetector : `int`, optional
@@ -1069,21 +1065,23 @@ def makeAzElPlot(
 ) -> None:
     """Plot the PSFs on the focal plane, rotated to az/el coordinates.
 
-    Top left:
-        A scatter plot of the T values in square arcseconds.
-    Top right:
-        A quiver plot of e1 and e2
-    Bottom left:
-        A scatter plot of e1
-    Bottom right:
-        A scatter plot of e2
+    When a third axes row is provided and the table contains the
+    higher-order HSM moment columns, additional coma, trefoil, and
+    kurtosis panels are also drawn via `plotHigherOrderMomentsData`.
 
-    This function plots the data from the ``table`` on the provided ``fig`` and
-    ``axs`` objects. It also plots the camera detector outlines on the focal
-    plane plot, respecting the camera rotation for the exposure.
+    Layout of the 2x3 axes grid:
 
-    If ``saveAs`` is provided, the figure will be saved at the specified file
-    path.
+    - top-left: quiver plot of spin-2 ellipticity
+    - top-middle: scatter plot of FWHM in arcsec
+    - top-right: histogram of FWHM with quartile annotations
+    - bottom-left: scatter plot of e1
+    - bottom-middle: scatter plot of e2
+    - bottom-right: histogram of |e| with quartile annotations
+
+    The camera detector outlines (or raft shading for the full focal
+    plane) are drawn on the scatter panels, respecting the camera
+    rotation for the exposure. If ``saveAs`` is provided, the figure
+    is written to that file path.
 
     Parameters
     ----------
@@ -1091,10 +1089,10 @@ def makeAzElPlot(
         The figure object to plot on.
     axs : `numpy.ndarray`
         The array of axes objects to plot on.
-    table : `numpy.ndarray`
+    table : `astropy.table.Table`
         The table containing the data to be plotted.
-    camera : `list`
-        The list of camera detector objects.
+    camera : `lsst.afw.cameraGeom.Camera`
+        Camera geometry used to draw detector outlines.
     physicalFilter : `str`
         The physical filter name to include in the plot title.
     maxPointsPerDetector : `int`, optional

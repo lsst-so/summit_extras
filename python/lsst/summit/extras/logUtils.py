@@ -108,11 +108,14 @@ class LogBrowser:
         self.logs = self._loadLogs(self.dataRefs)
 
     def _getDataRefs(self) -> list[dafButler.DatasetRef]:
-        """Get the dataRefs for the specified task and collection.
+        """Query the registry for this task's log dataRefs.
 
         Returns
         -------
         dataRefs : `list` [`lsst.daf.butler.DatasetRef`]
+            Sorted, deduplicated list of ``{taskName}_log`` dataRefs in
+            the configured collection that match the ``where``/``bind``
+            filter.
         """
         queryResults = self.butler.registry.queryDatasets(
             f"{self.taskName}_log",
@@ -126,13 +129,18 @@ class LogBrowser:
         return sorted(results)
 
     def _loadLogs(self, dataRefs: list) -> dict[dafButler.DatasetRef, dafButler.ButlerLogRecords]:
-        """Load all the logs for the dataRefs.
+        """Fetch the log for each dataRef from the butler.
+
+        Parameters
+        ----------
+        dataRefs : `list` [`lsst.daf.butler.DatasetRef`]
+            The log dataRefs to load.
 
         Returns
         -------
-        logs : `dict` {`lsst.daf.butler.DatasetRef`:
-                       `lsst.daf.butler.ButlerLogRecords`}
-            A dict of all the logs, keyed by their dataRef.
+        logs : `dict` [`lsst.daf.butler.DatasetRef`, \
+                       `lsst.daf.butler.ButlerLogRecords`]
+            Dict of loaded logs keyed by their dataRef.
         """
         logs = {}
         for i, dataRef in enumerate(dataRefs):
@@ -143,22 +151,24 @@ class LogBrowser:
         return logs
 
     def getPassingDataIds(self) -> list[dafButler.DataCoordinate]:
-        """Get the dataIds for all passes within the collection for the task.
+        """Return the dataIds for all successful task runs.
 
         Returns
         -------
-        dataIds : `list` [`lsst.daf.butler.dimensions.DataCoordinate`]
+        dataIds : `list` [`lsst.daf.butler.DataCoordinate`]
+            DataIds whose final log line does not contain ``"failed"``.
         """
         fails = self._getFailDataRefs()
         passes = [r.dataId for r in self.dataRefs if r not in fails]
         return passes
 
     def getFailingDataIds(self) -> list[dafButler.DataCoordinate]:
-        """Get the dataIds for all fails within the collection for the task.
+        """Return the dataIds for all failed task runs.
 
         Returns
         -------
-        dataIds : `list` [`lsst.daf.butler.dimensions.DataCoordinate`]
+        dataIds : `list` [`lsst.daf.butler.DataCoordinate`]
+            DataIds whose final log line contains ``"failed"``.
         """
         fails = self._getFailDataRefs()
         return [r.dataId for r in fails]

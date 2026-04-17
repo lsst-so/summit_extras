@@ -37,22 +37,23 @@ logger = logging.getLogger("headerFunctions")
 
 
 def loadHeaderDictsFromLibrary(libraryFilename: str) -> tuple[dict, dict]:
-    """Load the header and hash dicts from a pickle file.
+    """Load cached header and hash dicts from a pickle library file.
 
     Parameters
     ----------
     libraryFilename : `str`
-        Path of the library file to load from
+        Path of the library pickle file to load from.
 
     Returns
     -------
     headersDict : `dict`
-        A dict, keyed by filename, with the values being the full primary
-    header, exactly as if it were built by buildHashAndHeaderDicts().
-
+        A dict, keyed by filename, with values being the full primary
+        header, in the same format built by `buildHashAndHeaderDicts`.
+        Empty if the file does not exist or fails to load.
     dataDict : `dict`
-        A dict, keyed by filename, with the values being hashes of the data
-    sections, exactly as if it were built by buildHashAndHeaderDicts().
+        A dict, keyed by filename, with values being hashes of the data
+        sections, in the same format built by `buildHashAndHeaderDicts`.
+        Empty if the file does not exist or fails to load.
     """
     try:
         with open(libraryFilename, "rb") as pickleFile:
@@ -78,6 +79,17 @@ def loadHeaderDictsFromLibrary(libraryFilename: str) -> tuple[dict, dict]:
 
 
 def _saveToLibrary(libraryFilename: str, headersDict: dict, dataDict: dict) -> None:
+    """Persist header and data-hash dicts to a pickle library file.
+
+    Parameters
+    ----------
+    libraryFilename : `str`
+        Path of the library pickle file to write.
+    headersDict : `dict`
+        Dict of primary headers keyed by filename.
+    dataDict : `dict`
+        Dict of data-section hashes keyed by filename.
+    """
     try:
         with open(libraryFilename, "wb") as dumpFile:
             pickle.dump((headersDict, dataDict), dumpFile, pickle.HIGHEST_PROTOCOL)
@@ -91,6 +103,27 @@ def _saveToLibrary(libraryFilename: str, headersDict: dict, dataDict: dict) -> N
 def _findKeyForValue(
     dictionary: dict, value: Any, warnOnCollision: bool = True, returnCollisions: bool = False
 ) -> Any:
+    """Return the key or keys that map to a given value.
+
+    Parameters
+    ----------
+    dictionary : `dict`
+        The dictionary to search.
+    value : `object`
+        The value to look up.
+    warnOnCollision : `bool`, optional
+        If `True`, log a warning when the value is held by more than one
+        key.
+    returnCollisions : `bool`, optional
+        If `True`, return the full list of matching keys. Otherwise
+        return only the first match.
+
+    Returns
+    -------
+    keys : `object` or `list`
+        A single matching key, or the full list of matching keys if
+        ``returnCollisions`` is `True`.
+    """
     listOfKeys = [k for (k, v) in dictionary.items() if v == value]
     if warnOnCollision and len(listOfKeys) != 1:
         logger.warning("Found multiple keys for value! Returning only first.")
@@ -100,14 +133,43 @@ def _findKeyForValue(
 
 
 def _hashFile(fileToHash: Any, dataHdu: int | str, sliceToUse: slice) -> str:
-    """Put in place so that if hashing multiple HDUs is desired when one
-    is filled with zeros it will be easy to add"""
+    """Return a hash of a 2D region of a FITS HDU's data array.
+
+    Kept as a small helper so that hashing multiple HDUs (e.g. to cope
+    with HDUs filled with zeros) can be added straightforwardly.
+
+    Parameters
+    ----------
+    fileToHash : `astropy.io.fits.HDUList`
+        The opened FITS file.
+    dataHdu : `int` or `str`
+        Index or extension name of the HDU holding the pixel data.
+    sliceToUse : `slice`
+        Slice applied to both axes of the data array before hashing.
+
+    Returns
+    -------
+    hashStr : `str`
+        Hex-encoded SHA-256 digest of the sliced data.
+    """
     data = fileToHash[dataHdu].data[sliceToUse, sliceToUse].tostring()
     h = _hashData(data)
     return h
 
 
 def _hashData(data: np.ndarray) -> str:
+    """Return a hex SHA-256 hash of the given array's bytes.
+
+    Parameters
+    ----------
+    data : `numpy.ndarray` or `bytes`
+        The data to hash.
+
+    Returns
+    -------
+    hashStr : `str`
+        Hex-encoded SHA-256 digest, suitable for storing in a dict.
+    """
     h = hashlib.sha256(data).hexdigest()  # hex because we want it readable in the dict
     return h
 
@@ -118,29 +180,32 @@ ZERO_HASH = _hashData(np.zeros((100, 100), dtype=np.int32))
 def buildHashAndHeaderDicts(
     fileList: list[str], dataHdu: int | str = "Segment00", libraryLocation: str | None = None
 ) -> tuple[dict, dict]:
-    """For a list of files, build dicts of hashed data and headers.
+    """Build dicts of primary headers and data-section hashes.
 
-    Data is hashed using a currently-hard-coded 100x100 region of the pixels
-    i.e. file[dataHdu].data[0:100, 0:100]
+    Data is hashed using the hard-coded 100x100 corner of the pixel
+    array, i.e. ``file[dataHdu].data[0:100, 0:100]``. If a library
+    location is supplied, existing entries are loaded from there and
+    newly computed entries are written back.
 
     Parameters
     ----------
-    fileList : `list` of `str`
-        The fully-specified paths of the files to scrape
-
-    dataHdu : `str` or `int`
+    fileList : `list` [`str`]
+        The fully-specified paths of the files to scrape.
+    dataHdu : `int` or `str`, optional
         The HDU to use for the pixel data to hash.
+    libraryLocation : `str`, optional
+        Path to a pickle file used to cache results across runs. If
+        provided, existing entries are loaded before processing and
+        newly computed entries are written back.
 
     Returns
     -------
     headersDict : `dict`
-        A dict, keyed by filename, with the values being the full primary
-    header.
-
+        A dict, keyed by filename, with values being the full primary
+        header.
     dataDict : `dict`
-        A dict, keyed by filename, with the values being hashes of the file's
-    data section, as defined by the dataSize and dataHdu.
-
+        A dict, keyed by filename, with values being hashes of the
+        file's data section.
     """
     headersDict: dict[str, Any] = {}
     dataDict: dict[str, str] = {}
@@ -191,7 +256,25 @@ def buildHashAndHeaderDicts(
 
 
 def sorted(inlist: set | list, replacementValue: str = "<BLANK VALUE>") -> list:
-    """Redefinition of sorted() to deal with blank values and str/int mixes"""
+    """Sort a list, coercing all values to strings and handling blanks.
+
+    Replaces any ``astropy.io.fits.card.Undefined`` entries with
+    ``replacementValue`` so they sort consistently alongside mixed
+    string and integer values. This deliberately shadows the built-in
+    `sorted` in this module's namespace.
+
+    Parameters
+    ----------
+    inlist : `set` or `list`
+        Values to sort.
+    replacementValue : `str`, optional
+        String used in place of undefined FITS card values.
+
+    Returns
+    -------
+    output : `list` [`str`]
+        Sorted list of string values.
+    """
     from builtins import sorted as _sorted
 
     output = [
@@ -210,22 +293,42 @@ def keyValuesSetFromFiles(
     libraryLocation: str | None = None,
     printPerFile: bool = False,
 ) -> Any:
-    """For a list of FITS files, get the set of values for the given keys.
+    """Get the set of values seen for a set of header keys across files.
 
     Parameters
     ----------
-    fileList : `list` of `str`
-        The fully-specified paths of the files to scrape
+    fileList : `list` [`str`]
+        The fully-specified paths of the files to scrape.
+    keys : `list` [`str`]
+        The header keys to scrape.
+    joinKeys : `list` [`str`]
+        List of keys to concatenate with ``+`` when scraping. For
+        example, a header with ``FILTER1 = SDSS_u`` and
+        ``FILTER2 = NB_640nm`` yields ``SDSS_u+NB_640nm``. Useful when
+        looking for the actually observed combinations rather than the
+        Cartesian product of the individual sets. Pass an empty list to
+        skip join processing.
+    noWarn : `bool`, optional
+        If `True`, suppress warnings about keys missing from a header.
+    printResults : `bool`, optional
+        If `True`, print the collected values (and files with all-zero
+        data) to stdout.
+    libraryLocation : `str`, optional
+        Path to a cached header library; passed through to
+        `buildHashAndHeaderDicts`.
+    printPerFile : `bool`, optional
+        If `True`, print each ``filename<tab>key<tab>value`` triple as
+        it is scraped. Prompts for confirmation when the output would
+        exceed 200 lines.
 
-    keys : `list` of `str`
-        The header keys to scrape
-
-    joinKeys : `list` of `str`
-        List of keys to concatenate when scraping, e.g. for a header with
-        FILTER1 = SDSS_u and FILTER2 == NB_640nm
-        this would return SDSS_u+NB_640nm
-        Useful when looking for the actual set, rather than taking the product
-        of all the individual values, as some combinations may never happen.
+    Returns
+    -------
+    kValues : `dict` [`str`, `set`] or `None`
+        Mapping of each requested key to the set of values seen. `None`
+        if ``keys`` is empty.
+    joinedValues : `set` [`str`]
+        Set of joined value strings. Only returned if ``joinKeys`` is
+        non-empty.
     """
     print(f"Scraping headers from {len(fileList)} files...")
     if printPerFile and (len(fileList) * len(keys) > 200):
@@ -303,27 +406,28 @@ def keyValuesSetFromFiles(
 
 
 def compareHeaders(filename1: str, filename2: str) -> None:
-    """Compare the headers of two files in detail.
+    """Compare the headers of two FITS files in detail.
 
-    First, the two files are confirmed to have the same pixel data to ensure
-    the files should be being compared (by hashing the first 100x100 pixels
-    in HDU 1).
+    First, the two files are confirmed to have the same pixel data (by
+    hashing the first 100x100 pixels in HDU 1) to ensure the files
+    really should be compared.
 
-    It then prints out:
-        the keys that appear in A and not B
-        the keys that appear in B but not A
-        the keys that in common, and of those in common:
-            which are the same,
-            which differ,
-            and where different, what the differing values are
+    The function then prints:
+
+    - keys that appear in A but not in B
+    - keys that appear in B but not in A
+    - keys common to both files, split into those with identical
+      values and those whose values differ (showing the differing
+      values side-by-side)
+    - whether the post-PDU HDU ``EXTNAME`` ordering differs between
+      the two files
 
     Parameters
     ----------
-    filename1 : str
-        Full path to the first of the files to compare
-
-    filename2 : str
-        Full path to the second of the files to compare
+    filename1 : `str`
+        Full path to the first file to compare.
+    filename2 : `str`
+        Full path to the second file to compare.
     """
     assert isinstance(filename1, str)
     assert isinstance(filename2, str)

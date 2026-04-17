@@ -422,9 +422,7 @@ class SpectralFocusAnalyzer:
             thisColor = np.array([self.COLORS[spectrumSlice]])
 
             amps = [data[seqNum][spectrumSlice].amp for seqNum in seqNums]
-            widths = [
-                data[seqNum][spectrumSlice].sigma / pixelsPerArcsec * sigmaToFwhm for seqNum in seqNums
-            ]
+            widths = [data[seqNum][spectrumSlice].sigma / pixelsPerArcsec * sigmaToFwhm for seqNum in seqNums]
 
             pointsForLegend[spectrumSlice] = axes[0].scatter(focusPositions, amps, c=thisColor)
             axes[0].set_xlabel("Focus position (mm)", fontsize=labelFontSize)

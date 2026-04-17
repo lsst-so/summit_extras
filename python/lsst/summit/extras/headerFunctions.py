@@ -152,7 +152,7 @@ def _hashFile(fileToHash: Any, dataHdu: int | str, sliceToUse: slice) -> str:
     hashStr : `str`
         Hex-encoded SHA-256 digest of the sliced data.
     """
-    data = fileToHash[dataHdu].data[sliceToUse, sliceToUse].tostring()
+    data = fileToHash[dataHdu].data[sliceToUse, sliceToUse].tobytes()
     h = _hashData(data)
     return h
 

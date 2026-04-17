@@ -68,7 +68,9 @@ def getFwhmValues(visitSummary: ExposureCatalog) -> dict[int, float]:
 
         if len(row) > 0:
             psfSigma = row["psfSigma"][0]
-            fwhm = psfSigma * 2.355 * 0.2  # Convert to microns (0.2"/pixel)
+            # Convert Gaussian sigma in pixels to FWHM in arcsec:
+            # FWHM = sigma * 2*sqrt(2*ln(2)), plate scale = 0.2"/pixel.
+            fwhm = psfSigma * 2.3548 * 0.2
             fwhmValues[detectorId] = float(fwhm)
 
     return fwhmValues

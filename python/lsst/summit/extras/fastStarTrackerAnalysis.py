@@ -467,8 +467,8 @@ def checkResultConsistency(
         sources = [sourceSet[0] for sourceSet in results]
         dx = np.diff([s.centroidX for s in sources])
         dy = np.diff([s.centroidY for s in sources])
-        maxMovementX = np.max(dx)
-        maxMovementY = np.max(dy)
+        maxMovementX = np.max(np.abs(dx))
+        maxMovementY = np.max(np.abs(dy))
         happyOrSad = "✅"
         if max(maxMovementX, maxMovementY) > maxAllowableShift:
             consistent = False

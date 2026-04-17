@@ -541,7 +541,7 @@ def plotData(
     axs[1, 0].text(0.05, 0.92, "e1", transform=axs[1, 0].transAxes, fontsize=10)
 
     cbar = addColorbarToAxes(axs[1, 1].scatter(x, y, c=e2, vmin=-emax, vmax=emax, cmap="bwr", s=1))
-    cbar.set_label("e")
+    cbar.set_label("e1, e2")
     cbar.formatter = ticker.FormatStrFormatter("%+05.2f")
     cbar.update_ticks()
     for tick in cbar.ax.get_yticklabels():

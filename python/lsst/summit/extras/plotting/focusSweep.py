@@ -196,17 +196,27 @@ def fitSweepParabola(data: Table, varName: str) -> dict[str, Any]:
     rms = np.sqrt(np.mean(np.square(resids)))
     extremum = np.polyval(coefs, vertex)
 
-    # TODO: DM-45435 WARNING! Trusting ChatGPT with vertex uncertainty
-    # propagation for the moment.  Treat with extreme caution!
     da = np.sqrt(cov[0, 0])
     db = np.sqrt(cov[1, 1])
     covAB = cov[0, 1]
 
-    # Uncertainty propagation to the vertex x-coordinate
+    # Uncertainty propagation to the vertex x-coordinate (xv = -b/(2a)):
+    # d(xv)/da = b/(2a^2), d(xv)/db = -1/(2a).
     vertexUncertainty = np.sqrt(
         (db / (2 * a)) ** 2 + (b * da / (2 * a**2)) ** 2 - (b / (2 * a**2)) * (covAB / a)
     )
-    extremumUncertainty = np.sqrt((2 * vertex * da) ** 2 + db**2 + 4 * vertex * covAB)
+    # Uncertainty propagation to the extremum f(xv) = c - b^2/(4a), using
+    # the full 3x3 covariance matrix. Partial derivatives evaluated at the
+    # vertex: df/da = vertex^2, df/db = vertex, df/dc = 1.
+    extremumVariance = (
+        vertex**4 * cov[0, 0]
+        + vertex**2 * cov[1, 1]
+        + cov[2, 2]
+        + 2 * vertex**3 * cov[0, 1]
+        + 2 * vertex**2 * cov[0, 2]
+        + 2 * vertex * cov[1, 2]
+    )
+    extremumUncertainty = np.sqrt(extremumVariance)
 
     e1Rms = np.sqrt(np.mean(np.square(e1s)))
     e2Rms = np.sqrt(np.mean(np.square(e2s)))

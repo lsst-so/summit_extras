@@ -351,9 +351,6 @@ def plotExposureTiming(
 if __name__ == "__main__":
     # example usage
     import lsst.summit.utils.butlerUtils as butlerUtils  # noqa: F811
-    from lsst.summit.extras.slewTiming import (  # type: ignore[no-redef] # noqa: F811
-        plotExposureTiming as plotExposureTiming,
-    )
     from lsst.summit.utils.efdUtils import makeEfdClient
 
     client = makeEfdClient()

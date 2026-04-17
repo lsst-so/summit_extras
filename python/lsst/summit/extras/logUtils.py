@@ -214,6 +214,8 @@ class LogBrowser:
             # the final task failure message always comes in the last line
             # of the log and contains the string 'failed' as this is the
             # pipeline executor reporting on success/fail and the time and id.
+            if len(log) == 0:
+                continue
             if log[-1].message.find("failed") != -1:
                 fails.append(dataRef)
         return fails

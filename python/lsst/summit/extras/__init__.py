@@ -20,7 +20,17 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .animation import *
+from .annotations import Annotations
+from .assessQFM import AssessQFM
+from .fastStarTrackerAnalysis import *
 from .focusAnalysis import *
 from .headerFunctions import *
 from .imageSorter import *
+from .logUtils import *
 from .monitoring import *
+from .ringssSeeing import RingssSeeingMonitor, SeeingConditions
+
+# `slewTimingAuxTel` and `slewTimingSimonyi` both define
+# `plotExposureTiming`, so they are deliberately not wildcard-imported
+# here — callers should import the qualified name explicitly, e.g.
+# `from lsst.summit.extras.slewTimingSimonyi import plotExposureTiming`.

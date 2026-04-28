@@ -19,12 +19,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+
 __all__ = [
     "collectSweepData",
     "fitSweepParabola",
     "plotSweepParabola",
 ]
 
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from matplotlib.figure import Figure
@@ -32,25 +35,37 @@ from matplotlib.figure import Figure
 from lsst.summit.utils.dateTime import efdTimestampToAstropy
 from lsst.summit.utils.efdUtils import getMostRecentRowWithDataBefore
 
+if TYPE_CHECKING:
+    from astropy.table import Table
+
+    from lsst.daf.butler import DimensionRecord
+
 PLATESCALE = 0.2  # arcsec / pixel
 
 
-def collectSweepData(records, consDbClient, efdClient):
-    """Populate focus sweep table.
+def collectSweepData(records: list[DimensionRecord], consDbClient: Any, efdClient: Any) -> Table:
+    """Build a focus-sweep table of hexapod positions and PSF metrics.
+
+    Queries the consolidated database for quick-look PSF measurements
+    for the given visits, then joins the most recent compensated
+    camera and M2 hexapod positions from the EFD for each visit.
 
     Parameters
     ----------
-    records : list of `DimensionRecord`
-        Records spanning focus sweep.
-    consDbClient: `ConsDbClient`
-        Consolidated database client
-    efdClient: `EfdClient`
-        Engineering facilities database client
+    records : `list` [`lsst.daf.butler.DimensionRecord`]
+        Visit records spanning a focus sweep.
+    consDbClient : `ConsDbClient`
+        Consolidated database client.
+    efdClient : `lsst_efd_client.EfdClient`
+        Engineering facilities database client.
 
     Returns
     -------
     table : `astropy.table.Table`
-        Table containing hexapod sweep motions and quick look PSF measurements.
+        Table containing per-visit PSF metrics (``sigma``, ``T``,
+        ``e1``, ``e2``, ``fwhm``), sequence number, and hexapod
+        positions in columns prefixed ``cam_`` and ``m2_`` (``x``,
+        ``y``, ``z``, ``u``, ``v``, and ``age`` in seconds).
     """
     visitString = ",".join(str(r.id) for r in records)
     instrument = records[0].instrument
@@ -103,20 +118,25 @@ def collectSweepData(records, consDbClient, efdClient):
     return data
 
 
-def inferSweepVariable(data):
-    """Heuristically determine which variable is being swept during a focus
-    sweep.
+def inferSweepVariable(data: Table) -> str:
+    """Heuristically identify which hexapod axis is being swept.
+
+    Compares each hexapod axis's overall RMS against the RMS residual
+    from a linear fit vs. sequence number. The axis whose total RMS
+    is largest relative to its linear-fit residual is taken to be the
+    variable being actively stepped.
 
     Parameters
     ----------
     data : `astropy.table.Table`
-        Table holding sweep hexapod motions and PSF measurements.
+        Table of sweep hexapod motions and PSF measurements, as
+        produced by `collectSweepData`.
 
     Returns
     -------
-    varName : `str` | `None`
-        Name of the inferred active hexapod variable or None if inference
-        failed.
+    varName : `str` or `None`
+        Name of the inferred active hexapod variable (e.g.
+        ``"cam_z"``), or `None` if inference failed.
     """
     # Examine the ratio of RMS hexapod values to RMS hexapod residuals from a
     # linear fit against seqNum.  If removing the linear term significantly
@@ -139,10 +159,34 @@ def inferSweepVariable(data):
         if stat > statMax:
             varName = vName
             statMax = stat
+    if varName is None:
+        raise ValueError("Failed to infer swept variable from hexapod data")
     return varName
 
 
-def fitSweepParabola(data, varName):
+def fitSweepParabola(data: Table, varName: str) -> dict[str, Any]:
+    """Fit a parabola to FWHM vs. the swept hexapod variable.
+
+    Fits ``fwhm`` as a quadratic function of ``data[varName]`` and
+    returns the vertex, extremum, fit residual RMS, their
+    uncertainties, plus the RMS of the e1 and e2 ellipticity
+    components across the sweep.
+
+    Parameters
+    ----------
+    data : `astropy.table.Table`
+        Table of sweep data from `collectSweepData`.
+    varName : `str`
+        Column name to use as the independent variable for the
+        parabolic fit (e.g. ``"cam_z"``).
+
+    Returns
+    -------
+    fitDict : `dict` [`str`, `object`]
+        Dict with keys ``vertex``, ``extremum``, ``rms``,
+        ``vertexUncertainty``, ``extremumUncertainty``, ``e1Rms``,
+        ``e2Rms``, and the quadratic ``coefs`` array.
+    """
     fwhms = data["fwhm"]
     e1s = data["e1"]
     e2s = data["e2"]
@@ -154,17 +198,27 @@ def fitSweepParabola(data, varName):
     rms = np.sqrt(np.mean(np.square(resids)))
     extremum = np.polyval(coefs, vertex)
 
-    # TODO: DM-45435 WARNING! Trusting ChatGPT with vertex uncertainty
-    # propagation for the moment.  Treat with extreme caution!
     da = np.sqrt(cov[0, 0])
     db = np.sqrt(cov[1, 1])
     covAB = cov[0, 1]
 
-    # Uncertainty propagation to the vertex x-coordinate
+    # Uncertainty propagation to the vertex x-coordinate (xv = -b/(2a)):
+    # d(xv)/da = b/(2a^2), d(xv)/db = -1/(2a).
     vertexUncertainty = np.sqrt(
         (db / (2 * a)) ** 2 + (b * da / (2 * a**2)) ** 2 - (b / (2 * a**2)) * (covAB / a)
     )
-    extremumUncertainty = np.sqrt((2 * vertex * da) ** 2 + db**2 + 4 * vertex * covAB)
+    # Uncertainty propagation to the extremum f(xv) = c - b^2/(4a), using
+    # the full 3x3 covariance matrix. Partial derivatives evaluated at the
+    # vertex: df/da = vertex^2, df/db = vertex, df/dc = 1.
+    extremumVariance = (
+        vertex**4 * cov[0, 0]
+        + vertex**2 * cov[1, 1]
+        + cov[2, 2]
+        + 2 * vertex**3 * cov[0, 1]
+        + 2 * vertex**2 * cov[0, 2]
+        + 2 * vertex * cov[1, 2]
+    )
+    extremumUncertainty = np.sqrt(extremumVariance)
 
     e1Rms = np.sqrt(np.mean(np.square(e1s)))
     e2Rms = np.sqrt(np.mean(np.square(e2s)))
@@ -181,7 +235,34 @@ def fitSweepParabola(data, varName):
     )
 
 
-def plotSweepParabola(data, varName, fitDict, saveAs=None, figAxes=None):
+def plotSweepParabola(
+    data: Table,
+    varName: str,
+    fitDict: dict[str, Any],
+    saveAs: str | None = None,
+    figAxes: tuple[Figure, np.ndarray[Any, np.dtype[np.object_]]] | None = None,
+) -> None:
+    """Plot a focus sweep: hexapod motions, PSF metrics, and the fit.
+
+    Produces a 3x4 grid with the camera and M2 hexapod axis positions
+    vs. sequence number on the left, the FWHM and ellipticity
+    components vs. sequence number and vs. the swept variable on the
+    right, and the fitted parabola overlaid on the FWHM panel.
+
+    Parameters
+    ----------
+    data : `astropy.table.Table`
+        Table of sweep data from `collectSweepData`.
+    varName : `str`
+        Hexapod variable that was swept (e.g. ``"cam_z"``).
+    fitDict : `dict` [`str`, `object`]
+        Fit results as returned by `fitSweepParabola`.
+    saveAs : `str`, optional
+        If provided, save the figure to this file.
+    figAxes : `tuple` [`matplotlib.figure.Figure`, `numpy.ndarray`], optional
+        Pre-existing figure and 3x4 axes grid to plot into. If not
+        provided, a new figure and grid are created.
+    """
     xs = data[varName]
 
     if figAxes is None:
@@ -233,7 +314,7 @@ def plotSweepParabola(data, varName, fitDict, saveAs=None, figAxes=None):
     label = varName.replace("_", " ")
     label = label.replace("u", "Rx")
     label = label.replace("v", "Ry")
-    unit = "deg" if "r" in label else "µm"
+    unit = "deg" if "R" in label else "µm"
 
     for ax in [fwhmVarAx, fwhmSeqAx]:
         ax.set_ylabel("fwhm [arcsec]")
@@ -262,7 +343,7 @@ def plotSweepParabola(data, varName, fitDict, saveAs=None, figAxes=None):
         ax.set_ylabel("e1 or e2")
 
     # Print useful info in the top right
-    kwargs = dict(fontsize=10, ha="left", fontfamily="monospace")
+    kwargs: dict[str, Any] = dict(fontsize=10, ha="left", fontfamily="monospace")
     xtext = 0.6
     fig.text(xtext, 0.94, "FWHM fit", **kwargs)
     fig.text(xtext, 0.92, "--------", **kwargs)

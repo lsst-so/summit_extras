@@ -102,43 +102,48 @@ def makeDofPredictedFWHMPlot(
     zMin: int = 4,
     vmaxEllipticities: float = 0.2,
     fwhmRange: float = 0.2,
-):
+) -> None:
     """Make a focal plane plot of predicted FWHM based on estimated DOFs.
 
-    Top center: Shows the measured zernikes and predicted zernikes from degrees
-    of freedom at the four corners.
+    The composite figure has four regions:
 
-    Top right: panel with all the predicted degreed of freedom across the focal
-    plane.
-
-    Left bottom panel: shows interpolated zernike values based on the predicted
-    degree of freedom state. It also shows measured values at the corners.
-
-    Right bottom panel: shows the predicted AOS FWHM values across the focal
-    plane based on the degrees of freedom, the predicted AOS FWHM + donutBlur,
-    the measured FWHM, and the subtraction of measured - AOS FWHM - donut blur,
-    in quadrature, of course.
+    - upper left: text summary of the dayObs/seqNum, DOFs and
+      wavefront-sensing Zernike indices used, plus an index of the
+      sub-panels below.
+    - upper centre: per-corner bar charts comparing the measured
+      Zernikes with the ones implied by the predicted DOF state.
+    - lower left: 5x5 grid of Zernike coefficients interpolated across
+      the focal plane, with corner measurements overplotted.
+    - upper right: text block listing the inferred DOFs broken down
+      by decenter, tilt, and M1M3/M2 bending modes, alongside useful
+      FWHM/ellipticity metrics.
+    - lower right: 3x3 grid comparing measured and predicted FWHM
+      (including donut-blur convolution) and e1/e2 ellipticities
+      across the focal plane.
 
     Parameters
     ----------
     table : `astropy.table.Table`
         The table containing the measured FWHM data to be plotted.
     wavefrontData : `dict`
-        Dictionary containing wavefront measured and interpolated data.
+        Dictionary containing wavefront measured and interpolated
+        data (Zernike coefficients, interpolated FWHM, ellipticities,
+        field angles, etc.).
     donutBlur : `float`
-        The donut blur value to be added in quadrature to the AOS FWHM.
-    dofState : `np.ndarray`
-        The state of the degrees of freedom predicted.
-    nollIndices : `list[int]`
-        List of Noll indices that were used in the wavefront sensing.
+        Donut-blur FWHM, in arcsec, to be added in quadrature to the
+        AOS FWHM.
+    dofState : `numpy.ndarray`
+        Predicted state of the full DOF vector.
+    nollIndices : `numpy.ndarray`
+        Noll indices that were used in the wavefront sensing.
     saveAs : `str`, optional
-        If provided, the plot will be saved to this file.
+        If provided, save the figure to this file path.
     zMin : `int`, optional
-        The minimum Noll index used in the wavefront sensing.
+        Minimum Noll index to display in the per-corner bar chart.
     vmaxEllipticities : `float`, optional
-        The maximum value for ellipticity color scaling.
+        Symmetric limit for the ellipticity color scale.
     fwhmRange : `float`, optional
-        The range of FWHM values for color scaling.
+        Target range of the FWHM color scale, in arcsec.
     """
     fig = make_figure(figsize=(40, 25))
 
@@ -368,10 +373,10 @@ def makeDofPredictedFWHMPlot(
     axText.axis("off")
 
     groups: dict[str, list[int]] = {
-        "Decenterings (M2 + Cam)": [0, 1, 2, 5, 6, 7],  # 0-9
-        "Tilts (M2 + Cam)": [3, 4, 8, 9],  # 10-16
-        "M1M3 bending modes": list(np.arange(10, 30)),  # 17-29 (13 modes)
-        "M2 bending modes": list(np.arange(30, 50)),  # 30-49 (20 modes)
+        "Decenterings (M2 + Cam)": [0, 1, 2, 5, 6, 7],
+        "Tilts (M2 + Cam)": [3, 4, 8, 9],
+        "M1M3 bending modes": list(np.arange(10, 30)),  # DOFs 10-29 (20 modes)
+        "M2 bending modes": list(np.arange(30, 50)),  # DOFs 30-49 (20 modes)
     }
 
     # Build left/right columns
@@ -421,7 +426,7 @@ def makeDofPredictedFWHMPlot(
         f"e2 p50 = {np.percentile(np.abs(table['e2']), 50):.3f}\n\n"
         f"Donut blur = {donutBlur:.2f} arcsec\n"
         f"Median AOS FWHM = {np.median(wavefrontData['fwhmMeasured']):.2f} arcsec\n\n"
-        f"sqrt(fwhm_95 - fwhm_05) = {sqrtFwhm9505:.2f} arcsec\n\n"
+        f"sqrt(fwhm_95^2 - fwhm_05^2) = {sqrtFwhm9505:.2f} arcsec\n\n"
         f"⟨FWHM^2_meas - FWHM^2_AOS @ blur⟩ = {fwhmMetric:.2f} arcsec^2"
     )
     wrapped = "\n".join([fill(line, width=40) for line in bodyStr.split("\n")])
@@ -455,30 +460,33 @@ def makeDofPredictedFWHMPlot(
     fwhmWithAtm = np.sqrt(wavefrontData["fwhmInterpolated"] ** 2 + donutBlur**2)
     cornersFwhmWithAtm = np.sqrt(wavefrontData["fwhmMeasured"] ** 2 + donutBlur**2)
 
-    vals = np.concatenate(
+    # Use a single colour range for all three FWHM panels below so that
+    # equal colours represent equal arcsec across predicted and measured
+    # data. Base it on the 5-95 percentile of all three sets combined.
+    allFwhm = np.concatenate(
         [
-            fwhmWithAtm - np.median(fwhmWithAtm),
-            cornersFwhmWithAtm - np.median(cornersFwhmWithAtm),
-            table["FWHM"] - np.median(table["FWHM"]),
+            np.asarray(fwhmWithAtm),
+            np.asarray(cornersFwhmWithAtm),
+            np.asarray(table["FWHM"]),
         ]
     )
-    vmin, vmax = np.percentile(vals, [5, 95])
+    fwhmVmin, fwhmVmax = np.nanpercentile(allFwhm, [5, 95])
 
     sc = ax.scatter(
         table["aa_x"],
         table["aa_y"],
         c=fwhmWithAtm,
         s=9,
-        vmin=vmin + np.median(fwhmWithAtm),
-        vmax=vmax + np.median(fwhmWithAtm),
+        vmin=fwhmVmin,
+        vmax=fwhmVmax,
     )
     ax.scatter(
         wavefrontData["fieldAngles"][:, 0],
         -wavefrontData["fieldAngles"][:, 1],
         c=cornersFwhmWithAtm,
         s=50,
-        vmin=vmin + np.median(cornersFwhmWithAtm),
-        vmax=vmax + np.median(cornersFwhmWithAtm),
+        vmin=fwhmVmin,
+        vmax=fwhmVmax,
     )
     circle = Circle((0, 0), 1.75, color="red", fill=False, linestyle="--")
     ax.add_patch(circle)
@@ -507,8 +515,8 @@ def makeDofPredictedFWHMPlot(
         table["aa_y"],
         c=table["FWHM"],
         s=9,
-        vmin=vmin + np.median(table["FWHM"]),
-        vmax=vmax + np.median(table["FWHM"]),
+        vmin=fwhmVmin,
+        vmax=fwhmVmax,
     )
     circle = Circle((0, 0), 1.75, color="red", fill=False, linestyle="--")
     ax.add_patch(circle)
@@ -678,7 +686,7 @@ def makeZernikePredictedFWHMPlot(
     table: Table,
     wavefrontData: dict[str, Any],
     saveAs: str = "",
-):
+) -> None:
     """Make a focal plane plot of predicted FWHM based on Zernike coefficients.
 
     Left panel: Shows the measured zernikes in the corner and the interpolated

@@ -42,18 +42,22 @@ if TYPE_CHECKING:
 
 
 def getFwhmValues(visitSummary: ExposureCatalog) -> dict[int, float]:
-    """Get FWHM values and detector IDs from a visit summary.
+    """Extract per-detector FWHM values from a visit summary table.
+
+    Iterates over all LSSTCam detectors and, for those that appear in
+    the visit summary, converts the PSF Gaussian sigma (in pixels) to
+    a FWHM in arcseconds using the 0.2 arcsec/pixel plate scale.
 
     Parameters
     ----------
     visitSummary : `lsst.afw.table.ExposureCatalog`
-        The visit summary table containing FWHM values.
+        The visit summary table containing PSF sigma values.
 
     Returns
     -------
-    fwhmValues : `dict[int, float]`
-        A dictionary mapping detector IDs to their corresponding FWHM values in
-        arcseconds.
+    fwhmValues : `dict` [`int`, `float`]
+        A dictionary mapping detector IDs to FWHM values in
+        arcseconds. Detectors missing from the summary are omitted.
     """
     camera = LsstCam().getCamera()
     detectors: list[int] = [det.getId() for det in camera]
@@ -64,7 +68,9 @@ def getFwhmValues(visitSummary: ExposureCatalog) -> dict[int, float]:
 
         if len(row) > 0:
             psfSigma = row["psfSigma"][0]
-            fwhm = psfSigma * 2.355 * 0.2  # Convert to microns (0.2"/pixel)
+            # Convert Gaussian sigma in pixels to FWHM in arcsec:
+            # FWHM = sigma * 2*sqrt(2*ln(2)), plate scale = 0.2"/pixel.
+            fwhm = psfSigma * 2.3548 * 0.2
             fwhmValues[detectorId] = float(fwhm)
 
     return fwhmValues
@@ -79,35 +85,35 @@ def makeFocalPlaneFWHMPlot(
     vmax: float | None = None,
     saveAs: str = "",
     title: str = "",
-):
-    """Plot the FWHM across the Focal Plane, from the fwhm_values
-    and detector_ids. The FWHM values are plotted per detector on
-    a focal plane plot, with the color indicating the FWHM value.
-    The color map is normalized between the minimum and maximum
-    FWHM values.
+) -> None:
+    """Plot a per-detector FWHM map across the focal plane.
 
-    If ``saveAs`` is provided, the figure will be saved at the
-    specified file path.
+    Each detector is drawn as its projected polygon in field-angle
+    coordinates and colored by its FWHM value; the mean, median, and
+    standard deviation of the FWHM across detectors are annotated in
+    the top-right corner of the axes. If ``vmin``/``vmax`` are not
+    supplied, the full range of the supplied FWHM values is used.
 
     Parameters
     ----------
     fig : `matplotlib.figure.Figure`
         The figure object to plot on.
-    axes : `numpy.ndarray`
-        The array of axes objects to plot on.
-    fwhmValues : `dict[int, float]`
-        A dictionary mapping detector IDs to their corresponding FWHM values
-        in arcseconds.
-    camera : `list`
-        The list of camera detector objects.
+    ax : `matplotlib.axes.Axes`
+        The axes to plot on.
+    fwhmValues : `dict` [`int`, `float`]
+        Dictionary mapping detector IDs to FWHM values in arcseconds.
+    camera : `lsst.afw.cameraGeom.Camera`
+        The camera geometry object used to look up detector polygons.
     vmin : `float`, optional
-        The minimum value for the color map
+        Minimum value for the color map. Defaults to
+        ``nanmin(fwhmValues)``.
     vmax : `float`, optional
-        The maximum value for the color map
+        Maximum value for the color map. Defaults to
+        ``nanmax(fwhmValues)``.
     saveAs : `str`, optional
-        The file path to save the figure.
+        If provided, save the figure to this file path.
     title : `str`, optional
-        The title of the plot. If not provided, no title is set.
+        Suptitle for the plot. If empty, no title is set.
     """
     # If vmin and vmax are None, use the min and max of the FWHM values
     if vmin is None:
@@ -116,7 +122,7 @@ def makeFocalPlaneFWHMPlot(
         vmax = np.nanmax(list(fwhmValues.values()))
 
     norm = Normalize(vmin=vmin, vmax=vmax)
-    cmap = plt.cm.viridis
+    cmap = plt.get_cmap("viridis")
 
     for detectorId, fwhm in fwhmValues.items():
         detector = camera.get(detectorId)
@@ -162,10 +168,10 @@ def makeFocalPlaneFWHMPlot(
     cbar = fig.colorbar(sm, ax=ax)
     cbar.set_label("FWHM (arcsec)")
 
-    plt.xlabel("Field Angle Y [deg]")
-    plt.ylabel("Field Angle X [deg]")
-    plt.axis("equal")
-    plt.grid(True, alpha=0.3)
+    ax.set_xlabel("Field Angle X [deg]")
+    ax.set_ylabel("Field Angle Y [deg]")
+    ax.set_aspect("equal")
+    ax.grid(True, alpha=0.3)
     if title:
         fig.suptitle(title, fontsize=18)
 

@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
+import numpy as np
 import pandas as pd
 from astropy.time import Time, TimeDelta
 from matplotlib.dates import DateFormatter, num2date
@@ -41,6 +42,8 @@ except ImportError:
     HAS_EFD_CLIENT = False
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from matplotlib.figure import Figure
     from pandas import DataFrame, Series
 
@@ -51,59 +54,58 @@ RINGSS_TOPIC = "lsst.sal.ESS.logevent_ringssMeasurement"
 
 @dataclass
 class SeeingConditions:
-    """Class to hold the seeing conditions from the RINGSS instrument.
+    """A single snapshot of RINGSS seeing conditions.
+
+    Values are either taken directly from a RINGSS EFD row or linearly
+    interpolated between two rows bracketing a requested time. All
+    numeric attributes default to NaN when the underlying column was
+    missing.
 
     Attributes
     ----------
-    timestamp : `Time`
-        The time of the seeing conditions.
-    XXX : `timeDelta`
-        Distance to the nearest actual reading, given to give a guide for
-        how accurate the data is likely to be.
-    seeing : `float`
-        XXX fill this in
-    freeAtmSeeing : `float`
-        XXX fill this in
-    groundLayer : `float`
-        XXX fill this in
+    timestamp : `astropy.time.Time`
+        The time to which these conditions apply. For an interpolated
+        instance this is the midpoint between the two source rows.
     eRMS : `float`
-        XXX fill this in
+        Residual defocus signature RMS reported by RINGSS.
     flux : `float`
-        XXX fill this in
+        Measured flux from the RINGSS target star, in instrumental
+        units.
     fwhmFree : `float`
-        XXX fill this in
+        Free-atmosphere seeing FWHM, in arcsec.
     fwhmScintillation : `float`
-        XXX fill this in
+        Scintillation-derived total seeing FWHM, in arcsec.
     fwhmSector : `float`
-        XXX fill this in
+        Profile-weighted sector seeing FWHM, in arcsec.
     hrNum : `float`
-        XXX fill this in
+        RINGSS star HR number.
     tau0 : `float`
-        XXX fill this in
+        Atmospheric coherence time, in ms.
     theta0 : `float`
-        XXX fill this in
+        Isoplanatic angle, in arcsec.
     totalVariance : `float`
-        XXX fill this in
-    turbulenceProfiles0 : `float`
-        XXX fill this in
-    turbulenceProfiles1 : `float`
-        XXX fill this in
-    turbulenceProfiles2 : `float`
-        XXX fill this in
-    turbulenceProfiles3 : `float`
-        XXX fill this in
-    turbulenceProfiles4 : `float`
-        XXX fill this in
-    turbulenceProfiles5 : `float`
-        XXX fill this in
-    turbulenceProfiles6 : `float`
-        XXX fill this in
-    turbulenceProfiles7 : `float`
-        XXX fill this in
-    wind : `float`
-        XXX fill this in
+        Total variance of the wavefront signal.
+    profile0m : `float`
+        Turbulence integral at the ground layer (0 m).
+    profile250m : `float`
+        Turbulence integral at 250 m.
+    profile500m : `float`
+        Turbulence integral at 500 m.
+    profile1000m : `float`
+        Turbulence integral at 1 km.
+    profile2000m : `float`
+        Turbulence integral at 2 km.
+    profile4000m : `float`
+        Turbulence integral at 4 km.
+    profile8000m : `float`
+        Turbulence integral at 8 km.
+    profile16000m : `float`
+        Turbulence integral at 16 km.
+    windSpeed : `float`
+        Wind speed at the turbulence layer, in m/s.
     zenithDistance : `float`
-        XXX fill this in
+        Zenith distance of the RINGSS target at the measurement time,
+        in degrees.
     """
 
     timestamp: Time
@@ -130,37 +132,83 @@ class SeeingConditions:
 
     @property
     def isoparalacticAngle(self) -> float:
-        """Alias for isoparalacticAngle."""
-        return self.isoparalacticAngle
+        """Isoparalactic angle, in arcsec.
+
+        Returns
+        -------
+        angle : `float`
+            The isoparalactic angle.
+
+        Raises
+        ------
+        NotImplementedError
+            Always raised; there is no corresponding RINGSS field
+            available in the EFD topic yet.
+        """
+        raise NotImplementedError("isoparalacticAngle is not available from the RINGSS EFD topic")
 
     @property
     def starName(self) -> str:
-        """Alias for starName including the HD part."""
-        return f"HD{self.starName}"
+        """HR-prefixed name of the RINGSS target star.
+
+        Returns
+        -------
+        name : `str`
+            The star name, e.g. ``"HR1234"``.
+        """
+        return f"HR{int(self.hrNum)}"
 
     @property
     def seeing(self) -> float:
-        """Alias for fwhmScintillation - the seeing in arcsec."""
+        """Scintillation-derived total seeing FWHM, in arcsec.
+
+        Returns
+        -------
+        seeing : `float`
+            Alias for `fwhmScintillation`.
+        """
         return self.fwhmScintillation
 
     @property
     def seeing2(self) -> float:
-        """The seeing profile adjusted weight in arcsec."""
+        """Profile-weighted seeing FWHM, in arcsec.
+
+        Returns
+        -------
+        seeing : `float`
+            Alias for `fwhmSector`.
+        """
         return self.fwhmSector
 
     @property
     def freeAtmosphericSeeing(self) -> float:
-        """Alias for fwhmFree - the free atmospheric seeing in arcsec."""
+        """Free-atmosphere seeing FWHM, in arcsec.
+
+        Returns
+        -------
+        seeing : `float`
+            Alias for `fwhmFree`.
+        """
         return self.fwhmFree
 
     @property
     def groundLayerSeeing(self) -> float:
-        """The transformation of turbulenceProfiles0 to the ground layer seeing
-        in arcsec.
+        """Ground-layer seeing FWHM in arcsec.
+
+        Returns
+        -------
+        seeing : `float`
+            The seeing contribution from the ground layer.
+
+        Raises
+        ------
+        NotImplementedError
+            Always raised; the conversion from the turbulence
+            integral at 0 m to arcsec is not yet implemented.
         """
         raise NotImplementedError("I need the transormation to get this value in arcsec")
 
-    def __init__(self, rows: list[Series]) -> None:
+    def __init__(self, rows: list[Series], targetTime: Time | None = None) -> None:
         # Ensure we have valid data
         assert len(rows) >= 1, "Must provide some data!"
         assert len(rows) <= 2, "Provided data must be either or two rows."
@@ -193,19 +241,24 @@ class SeeingConditions:
             self.windSpeed = row.get("wind", float("nan"))
             self.zenithDistance = row.get("zenithDistance", float("nan"))
         else:
-            # Interpolate between two rows
+            # Interpolate between two rows at the requested target time.
+            # If no target is given, fall back to the midpoint.
             t1, t2 = timestamps
-            # Calculate the midpoint timestamp for interpolation
-            t = t1 + (t2 - t1) / 2
+            if targetTime is None:
+                t = t1 + (t2 - t1) / 2
+            else:
+                t = pd.Timestamp(targetTime.datetime).tz_localize("UTC")
             self.timestamp = Time(t)
 
-            # Weight for interpolation (0 to 1)
+            # Weight for linear interpolation (0 to 1), clamped to the
+            # bracket so extrapolation beyond the two rows can't occur.
             w = (t - t1) / (t2 - t1)
+            w = max(0.0, min(1.0, float(w)))
 
             row1, row2 = rows[0], rows[1]
 
             # Helper function for interpolation
-            def interpolate(col):
+            def interpolate(col: str) -> float:
                 if col in row1 and col in row2:
                     v1, v2 = row1.get(col, float("nan")), row2.get(col, float("nan"))
                     return v1 + (v2 - v1) * w
@@ -231,7 +284,7 @@ class SeeingConditions:
             self.windSpeed = interpolate("wind")
             self.zenithDistance = interpolate("zenithDistance")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"SeeingConditions @ {self.timestamp.isot}\n"
             f"  Seeing          = XXX define me!\n"
@@ -243,6 +296,21 @@ class SeeingConditions:
 
 
 class RingssSeeingMonitor:
+    """Query and plot RINGSS seeing data from the EFD.
+
+    Parameters
+    ----------
+    efdClient : `lsst_efd_client.EfdClient`
+        Client used to query the EFD for RINGSS data.
+    warningThreshold : `float`, optional
+        Interpolation interval, in seconds, above which a warning is
+        logged when returning interpolated seeing conditions.
+    errorThreshold : `float`, optional
+        Interpolation interval, in seconds, above which an interpolated
+        value is refused outright. Also used as the search half-window
+        when looking for the nearest RINGSS measurement.
+    """
+
     def __init__(
         self, efdClient: EfdClient, warningThreshold: float = 300, errorThreshold: float = 600
     ) -> None:
@@ -276,15 +344,16 @@ class RingssSeeingMonitor:
         # Ensure the timestamp is sorted
         data.sort_index(inplace=True)
 
+        # Convert the astropy Time object to a tz-aware pandas Timestamp
+        # so comparisons against ``data.index`` work.
+        time_datetime = pd.Timestamp(time.datetime).tz_localize("UTC")
+
         # Check if the *exact* time exists - seems unlikely, but need to check
-        if time in data.index:
-            row = data.loc[time]
+        if time_datetime in data.index:
+            row = data.loc[time_datetime]
             return SeeingConditions(
                 rows=[row],
             )
-
-        # Convert the astropy Time object to a timezone-aware pandas Timestamp
-        time_datetime = pd.Timestamp(time.datetime).tz_localize("UTC")
 
         # Use the timezone-aware timestamp for comparison
         earlier = (
@@ -294,7 +363,11 @@ class RingssSeeingMonitor:
             data[data.index > time_datetime].iloc[0] if not data[data.index > time_datetime].empty else None
         )
 
-        if later is None and earlier is not None and (time - earlier.name).sec < self.errorThreshold:
+        if (
+            later is None
+            and earlier is not None
+            and (time_datetime - earlier.name).total_seconds() < self.errorThreshold
+        ):
             self.log.info("Returning the last available value.")
             return SeeingConditions(
                 rows=[earlier],
@@ -306,7 +379,7 @@ class RingssSeeingMonitor:
         # Check time difference: to log warnings/raise as necessary
         earlierTime = earlier.name
         laterTime = later.name
-        interval = (laterTime - earlierTime).seconds
+        interval = (laterTime - earlierTime).total_seconds()
 
         if interval > self.errorThreshold:
             raise ValueError(
@@ -320,6 +393,7 @@ class RingssSeeingMonitor:
 
         return SeeingConditions(
             rows=[earlier, later],
+            targetTime=time,
         )
 
     def getMostRecentTimestamp(self) -> Time:
@@ -465,18 +539,30 @@ class RingssSeeingMonitor:
         chile_tz = ZoneInfo("America/Santiago")
 
         # Function to convert UTC to Chilean time
-        def offset_time_aware(utc_time):
+        def offset_time_aware(utc_time: datetime) -> datetime:
             # Ensure the time is timezone-aware in UTC
             if utc_time.tzinfo is None:
-                utc_time = utc.localize(utc_time)
+                utc_time = utc_time.replace(tzinfo=utc)
             return utc_time.astimezone(chile_tz)
 
-        df.index = pd.DatetimeIndex([t for t in df.index])
+        times = pd.DatetimeIndex([t for t in df.index])
 
-        ax1.plot([seeing.fwhmFree for seeing in seeings], "b", label='Free atmos. seeing"', ls=ls, marker=ms)
-        ax1.plot([seeing.seeing for seeing in seeings], "r", label='Seeing "', ls=ls, marker=ms)
         ax1.plot(
-            [seeing.seeing2 for seeing in seeings], "g", label='Profile adjusted seeing "', ls=ls, marker=ms
+            times,
+            [seeing.fwhmFree for seeing in seeings],
+            "b",
+            label='Free atmos. seeing"',
+            ls=ls,
+            marker=ms,
+        )
+        ax1.plot(times, [seeing.seeing for seeing in seeings], "r", label='Seeing "', ls=ls, marker=ms)
+        ax1.plot(
+            times,
+            [seeing.seeing2 for seeing in seeings],
+            "g",
+            label='Profile adjusted seeing "',
+            ls=ls,
+            marker=ms,
         )
 
         ax2 = ax1.twiny()
@@ -491,7 +577,7 @@ class RingssSeeingMonitor:
         offset_ticks = [offset_time_aware(num2date(tick)) for tick in ax1.get_xticks()]
         ax2.set_xticklabels([tick.strftime("%H:%M:%S") for tick in offset_ticks])
 
-        ax1.set_ylim(0, 1.1 * max([s.seeing2 for s in seeings]))
+        ax1.set_ylim(0, 1.1 * np.nanmax([s.seeing2 for s in seeings]))
         ax1.set_xlabel("Time (UTC)")
         ax2.set_xlabel("Time (Chilean Time)")
         ax1.set_ylabel("Seeing (arcsec)")

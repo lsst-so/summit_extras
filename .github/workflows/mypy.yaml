@@ -1,0 +1,31 @@
+name: Run mypy
+
+# Gating mypy job: fails the build on any type error. Complements the
+# informational ``mypy-coverage`` workflow, which only reports
+# annotation coverage and does not block.
+#
+# Uses the shared Rubin workflow (``lsst/rubin_workflows``), the same
+# pattern used by ``summit_utils`` and ``daf_butler``. LSST and other
+# imports are pip-installed from ``requirements.txt`` rather than via
+# the science pipelines stack container, which is much faster.
+#
+# To make this an actual merge-blocker, add the job's name to the
+# required status checks for ``main`` in the branch protection
+# settings.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  call-workflow:
+    uses: lsst/rubin_workflows/.github/workflows/mypy.yaml@main
+    with:
+      # https://github.com/python/mypy/issues/17002
+      mypy_package: mypy!=1.9.0
+      # Match the local ``mypy .`` invocation: walk the whole repo and
+      # let mypy.ini's ``exclude`` skip the SCons-generated ``bin/``
+      # copies.
+      folders: "."

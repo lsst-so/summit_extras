@@ -50,10 +50,22 @@ INSTRUCTIONS = (
 
 
 class ImageSorter:
-    """Take a list on png files, as created by lsst.summit.extras.animator
-    and tag each dataId with a number of attributes.
+    """Interactively tag and annotate a list of PNG images.
 
-    Returns a dict of dataId dictionaries with values being the corresponding
+    Intended to be used on images produced by
+    `lsst.summit.extras.animation.Animator`. The user is shown each image
+    in turn and types tag characters and/or notes; the results are
+    written to a pickle file that can be reloaded with
+    `loadAnnotations`.
+
+    Parameters
+    ----------
+    fileList : `list` [`str`]
+        List of paths to PNG images to sort, in display order.
+    outputFilename : `str`
+        Path to the pickle file in which annotations are persisted. The
+        file is rewritten after every image so partial progress survives
+        a crash.
     """
 
     def __init__(self, fileList: list[str], outputFilename: str):
@@ -62,6 +74,24 @@ class ImageSorter:
 
     @staticmethod
     def _getDataIdFromFilename(filename: str) -> tuple[str, int]:
+        """Extract the dataId from an animator PNG filename.
+
+        Parameters
+        ----------
+        filename : `str`
+            Path to a file whose basename is of the form
+            ``YYYY-MM-DD-<seqNum>-<product>.png``.
+
+        Returns
+        -------
+        dataId : `tuple` [`str`, `int`]
+            The ``(dayObs, seqNum)`` dataId extracted from the filename.
+
+        Raises
+        ------
+        RuntimeError
+            Raised if the filename does not match the expected pattern.
+        """
         # filename of the form 2021-02-18-705-quickLookExp.png
         filename = os.path.basename(filename)
         mat = re.match(r"^(\d{4}-\d{2}-\d{2})-(\d*)-.*$", filename)
@@ -72,6 +102,27 @@ class ImageSorter:
         return (dayObs, seqNum)
 
     def getPreviousAnnotation(self, info: dict[tuple[str, int], str], imNum: int) -> str:
+        """Return the annotation for the image displayed before ``imNum``.
+
+        Parameters
+        ----------
+        info : `dict` [`tuple` [`str`, `int`], `str`]
+            The annotation dictionary keyed by dataId.
+        imNum : `int`
+            Index of the current image in ``self.fileList``. Must be
+            greater than zero.
+
+        Returns
+        -------
+        annotation : `str`
+            The annotation string from the previous image.
+
+        Raises
+        ------
+        RuntimeError
+            Raised if ``imNum`` is zero, since there is no previous
+            image.
+        """
         if imNum == 0:
             raise RuntimeError("There is no previous annotation for the first image.")
 
@@ -80,8 +131,33 @@ class ImageSorter:
         previousAnnotation = info[previousDataId]
         return previousAnnotation
 
-    def addData(self, dataId, info, answer: str, mode: str, imNum: int) -> None:
-        """Modes = O(verwrite), S(kip), A(ppend)"""
+    def addData(
+        self, dataId: tuple[str, int], info: dict[tuple[str, int], str], answer: str, mode: str, imNum: int
+    ) -> None:
+        """Record the user's answer for a dataId into the info dict.
+
+        Parameters
+        ----------
+        dataId : `tuple` [`str`, `int`]
+            The ``(dayObs, seqNum)`` dataId being annotated.
+        info : `dict` [`tuple` [`str`, `int`], `str`]
+            The annotation dictionary to update in place.
+        answer : `str`
+            The user-typed annotation. If it contains ``=``, the
+            previous image's annotation is substituted in.
+        mode : `str`
+            One of ``"O"`` (overwrite existing entries), ``"A"``
+            (append), or ``"B"`` (append, acting only on blank
+            entries). ``"S"`` (skip) is handled upstream and not passed
+            here.
+        imNum : `int`
+            Index of the current image in ``self.fileList``.
+
+        Raises
+        ------
+        RuntimeError
+            Raised if ``mode`` is not one of the recognized values.
+        """
         if "=" in answer:
             answer = self.getPreviousAnnotation(info, imNum)
 
@@ -101,13 +177,30 @@ class ImageSorter:
 
     @classmethod
     def loadAnnotations(cls, pickleFilename: str) -> tuple[dict, dict]:
-        """Load back and split up annotations for easy use.
+        """Load an annotations pickle and split it into tags and notes.
 
-        Anything after a space is returned as a whole string,
-        anything before it is lower-cased and returned as tags.
+        Anything after the first space in each raw annotation is treated
+        as a free-form note; everything before the space is treated as
+        the tag string (upper-cased). If the annotation starts with a
+        space, only a note is recorded and the tag is empty.
 
-        from lsst.summit.extras import ImageSorter
-        tags, notes = ImageSorter.loadAnnotations(pickleFilename)
+        Parameters
+        ----------
+        pickleFilename : `str`
+            Path to the pickle file written by `sortImages`.
+
+        Returns
+        -------
+        tags : `dict` [`tuple` [`str`, `int`], `str`]
+            Mapping from dataId to uppercase tag string.
+        notes : `dict` [`tuple` [`str`, `int`], `str`]
+            Mapping from dataId to note string. Only dataIds that have
+            notes appear as keys.
+
+        Examples
+        --------
+        >>> from lsst.summit.extras import ImageSorter
+        >>> tags, notes = ImageSorter.loadAnnotations(pickleFilename)
         """
         loaded = cls._load(pickleFilename)
 
@@ -128,20 +221,57 @@ class ImageSorter:
         return tags, notes
 
     @staticmethod
-    def _load(filename: str):
-        """Internal loading only.
+    def _load(filename: str) -> dict:
+        """Load the raw annotation pickle.
 
-        Not to be used by users for reading back annotations"""
+        This returns the unprocessed ``{dataId: rawAnswer}`` dict and is
+        intended for internal use. End users should call
+        `loadAnnotations` instead, which splits tags from notes.
+
+        Parameters
+        ----------
+        filename : `str`
+            Path to the pickle file.
+
+        Returns
+        -------
+        info : `dict`
+            Raw annotation dictionary as written to disk.
+        """
         with open(filename, "rb") as pickleFile:
             info = pickle.load(pickleFile)
         return info
 
     @staticmethod
-    def _save(info, filename: str) -> None:
+    def _save(info: dict, filename: str) -> None:
+        """Write the annotation dict to disk as a pickle.
+
+        Parameters
+        ----------
+        info : `dict`
+            Annotation dictionary to save.
+        filename : `str`
+            Path to the pickle file.
+        """
         with open(filename, "wb") as dumpFile:
             pickle.dump(info, dumpFile)
 
     def sortImages(self) -> dict | None:
+        """Display the image list and collect user annotations.
+
+        Runs an interactive loop: for each image the user is prompted
+        for a tag/notes string, which is added to the annotation dict
+        (respecting the mode chosen at startup) and the dict is
+        re-pickled to disk. If an output file already exists, the user
+        is first asked whether to append, overwrite, skip, or display.
+
+        Returns
+        -------
+        info : `dict` or `None`
+            The final annotation dictionary. Returns `None` if the user
+            entered an unrecognized mode at the prompt (which causes a
+            recursive restart).
+        """
         mode = "A"
         info = {}
         if os.path.exists(self.outputFilename):

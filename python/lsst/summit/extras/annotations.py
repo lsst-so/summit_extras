@@ -23,7 +23,24 @@ from lsst.summit.extras.imageSorter import TAGS, ImageSorter
 
 
 def _idTrans(dataIdDictOrTuple: dict | tuple[int, int]) -> tuple[int, int]:
-    """Take a dataId and turn it into the internal tuple format."""
+    """Convert a dataId to the internal ``(dayObs, seqNum)`` tuple form.
+
+    Parameters
+    ----------
+    dataIdDictOrTuple : `dict` or `tuple` [`int`, `int`]
+        A dataId expressed either as a dict with ``dayObs`` and ``seqNum``
+        keys or as a ``(dayObs, seqNum)`` tuple.
+
+    Returns
+    -------
+    dataId : `tuple` [`int`, `int`]
+        The dataId as a ``(dayObs, seqNum)`` tuple.
+
+    Raises
+    ------
+    RuntimeError
+        Raised if ``dataIdDictOrTuple`` is neither a `dict` nor a `tuple`.
+    """
     if isinstance(dataIdDictOrTuple, tuple):
         return dataIdDictOrTuple
     elif isinstance(dataIdDictOrTuple, dict):
@@ -33,8 +50,15 @@ def _idTrans(dataIdDictOrTuple: dict | tuple[int, int]) -> tuple[int, int]:
 
 
 class Annotations:
-    """Class for interfacing with annotations, as written by the
-    imageSorter.
+    """Interface for reading annotations written by `ImageSorter`.
+
+    Loads the tag and note dictionaries from an annotations file and
+    provides lookup helpers keyed by dataId.
+
+    Parameters
+    ----------
+    filename : `str`
+        Path to the annotations file produced by `ImageSorter`.
     """
 
     def __init__(self, filename: str):
@@ -42,49 +66,139 @@ class Annotations:
         self.tags, self.notes = self._load(filename)
 
     def _load(self, filename: str) -> tuple[dict, dict]:
-        """Load tags and notes from specified file."""
+        """Load tags and notes from the specified annotations file.
+
+        Parameters
+        ----------
+        filename : `str`
+            Path to the annotations file.
+
+        Returns
+        -------
+        tags : `dict`
+            Mapping of dataId tuples to tag strings.
+        notes : `dict`
+            Mapping of dataId tuples to note strings.
+        """
         tags, notes = ImageSorter.loadAnnotations(filename)
         return tags, notes
 
     def getTags(self, dataId: dict | tuple[int, int]) -> str | None:
-        """Get the tags for a specified dataId.
+        """Get the tags for the specified dataId.
 
-        Empty string means no tags, None means not examined"""
+        Parameters
+        ----------
+        dataId : `dict` or `tuple` [`int`, `int`]
+            The dataId to look up.
+
+        Returns
+        -------
+        tags : `str` or `None`
+            The tag string for the dataId. An empty string means the image
+            was examined but no tags were set; `None` means the image was
+            not examined.
+        """
         return self.tags.get(_idTrans(dataId), None)
 
     def getNotes(self, dataId: dict | tuple[int, int]) -> str | None:
-        """Get the notes for the specified dataId."""
+        """Get the notes for the specified dataId.
+
+        Parameters
+        ----------
+        dataId : `dict` or `tuple` [`int`, `int`]
+            The dataId to look up.
+
+        Returns
+        -------
+        notes : `str` or `None`
+            The note string for the dataId, or `None` if no notes exist.
+        """
         return self.notes.get(_idTrans(dataId), None)
 
     def hasTags(self, dataId: dict | tuple[int, int], flags: str) -> bool | None:
-        """Check if a dataId has all the specificed tags"""
+        """Check whether a dataId has all of the specified tags.
+
+        Parameters
+        ----------
+        dataId : `dict` or `tuple` [`int`, `int`]
+            The dataId to look up.
+        flags : `str`
+            String of single-character tag flags to test for. The
+            comparison is case-insensitive.
+
+        Returns
+        -------
+        hasAll : `bool` or `None`
+            `True` if all requested tags are present, `False` if any are
+            missing, or `None` if the dataId has not been examined.
+        """
         tag = self.getTags(dataId)
-        if tag is None:  # not just 'if tag' becuase '' is not the same as None but both as False-y
+        if tag is None:  # not just 'if tag' because '' is not the same as None but both are falsy
             return None
         return all(i in tag for i in flags.upper())
 
     def getListOfCheckedData(self) -> list:
-        """Return a list of all dataIds which have been examined."""
+        """Return the sorted list of all examined dataIds.
+
+        Returns
+        -------
+        dataIds : `list` [`tuple` [`int`, `int`]]
+            Sorted list of ``(dayObs, seqNum)`` tuples that have been
+            examined.
+        """
         return sorted(list(self.tags.keys()))
 
     def getListOfDataWithNotes(self) -> list:
-        """Return a list of all dataIds which have notes associated."""
+        """Return the sorted list of all dataIds that have notes.
+
+        Returns
+        -------
+        dataIds : `list` [`tuple` [`int`, `int`]]
+            Sorted list of ``(dayObs, seqNum)`` tuples with notes
+            attached.
+        """
         return sorted(list(self.notes.keys()))
 
     def isExamined(self, dataId: dict) -> bool:
-        """Check if the dataId has been examined or not."""
+        """Check whether the dataId has been examined.
+
+        Parameters
+        ----------
+        dataId : `dict` or `tuple` [`int`, `int`]
+            The dataId to look up.
+
+        Returns
+        -------
+        examined : `bool`
+            `True` if the dataId has an entry in the tag dictionary.
+        """
         return _idTrans(dataId) in self.tags
 
     def printTags(self) -> None:
-        """Display the list of tag definitions."""
+        """Print the list of tag definitions used by `ImageSorter`."""
         print(TAGS)
 
     def getIdsWithGivenTags(self, tags: str, exactMatches: bool = False) -> list:
+        """Return dataIds that match the specified tag string.
+
+        Parameters
+        ----------
+        tags : `str`
+            String of single-character tag flags to match. The comparison
+            is case-insensitive.
+        exactMatches : `bool`, optional
+            If `True`, only return dataIds whose tag string contains
+            exactly the requested tags and no others. If `False`
+            (default), return all dataIds whose tags are a superset of
+            the requested tags.
+
+        Returns
+        -------
+        dataIds : `list` [`tuple` [`int`, `int`]]
+            List of matching ``(dayObs, seqNum)`` tuples.
+        """
         if exactMatches:
-            return [
-                dId
-                for (dId, tag) in self.tags.items()
-                if (all(t in tag for t in tags.upper()) and (len(tags) == len(tag)))
-            ]
+            wanted = set(tags.upper())
+            return [dId for (dId, tag) in self.tags.items() if set(tag) == wanted]
         else:
             return [dId for (dId, tag) in self.tags.items() if all(t in tag for t in tags.upper())]

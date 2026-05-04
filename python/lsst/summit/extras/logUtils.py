@@ -20,7 +20,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import logging
-import math
 
 import lsst.daf.butler as dafButler
 
@@ -99,7 +98,7 @@ class LogBrowser:
         if self.bind is not None:
             for key in self.bind.keys():
                 if key not in self.where:
-                    self.log.warn(
+                    self.log.warning(
                         f"Key '{key}' in bind is not in the where string provided: "
                         f"'{self.where}', so no binding will take effect."
                     )
@@ -108,31 +107,39 @@ class LogBrowser:
         self.logs = self._loadLogs(self.dataRefs)
 
     def _getDataRefs(self) -> list[dafButler.DatasetRef]:
-        """Get the dataRefs for the specified task and collection.
+        """Query the registry for this task's log dataRefs.
 
         Returns
         -------
         dataRefs : `list` [`lsst.daf.butler.DatasetRef`]
+            Sorted, deduplicated list of ``{taskName}_log`` dataRefs in
+            the configured collection that match the ``where``/``bind``
+            filter.
         """
-        results = self.butler.registry.queryDatasets(
+        queryResults = self.butler.registry.queryDatasets(
             f"{self.taskName}_log",
             collections=self.collection,
             findFirst=True,
             where=self.where,
             bind=self.bind,
         )
-        results = list(set(results))
+        results = list(set(queryResults))
         self.log.info(f"Found {len(results)} datasets in collection for task {self.taskName}")
         return sorted(results)
 
     def _loadLogs(self, dataRefs: list) -> dict[dafButler.DatasetRef, dafButler.ButlerLogRecords]:
-        """Load all the logs for the dataRefs.
+        """Fetch the log for each dataRef from the butler.
+
+        Parameters
+        ----------
+        dataRefs : `list` [`lsst.daf.butler.DatasetRef`]
+            The log dataRefs to load.
 
         Returns
         -------
-        logs : `dict` {`lsst.daf.butler.DatasetRef`:
-                       `lsst.daf.butler.ButlerLogRecords`}
-            A dict of all the logs, keyed by their dataRef.
+        logs : `dict` [`lsst.daf.butler.DatasetRef`, \
+                       `lsst.daf.butler.ButlerLogRecords`]
+            Dict of loaded logs keyed by their dataRef.
         """
         logs = {}
         for i, dataRef in enumerate(dataRefs):
@@ -143,22 +150,24 @@ class LogBrowser:
         return logs
 
     def getPassingDataIds(self) -> list[dafButler.DataCoordinate]:
-        """Get the dataIds for all passes within the collection for the task.
+        """Return the dataIds for all successful task runs.
 
         Returns
         -------
-        dataIds : `list` [`lsst.daf.butler.dimensions.DataCoordinate`]
+        dataIds : `list` [`lsst.daf.butler.DataCoordinate`]
+            DataIds whose final log line does not contain ``"failed"``.
         """
         fails = self._getFailDataRefs()
         passes = [r.dataId for r in self.dataRefs if r not in fails]
         return passes
 
     def getFailingDataIds(self) -> list[dafButler.DataCoordinate]:
-        """Get the dataIds for all fails within the collection for the task.
+        """Return the dataIds for all failed task runs.
 
         Returns
         -------
-        dataIds : `list` [`lsst.daf.butler.dimensions.DataCoordinate`]
+        dataIds : `list` [`lsst.daf.butler.DataCoordinate`]
+            DataIds whose final log line contains ``"failed"``.
         """
         fails = self._getFailDataRefs()
         return [r.dataId for r in fails]
@@ -204,6 +213,8 @@ class LogBrowser:
             # the final task failure message always comes in the last line
             # of the log and contains the string 'failed' as this is the
             # pipeline executor reporting on success/fail and the time and id.
+            if len(log) == 0:
+                continue
             if log[-1].message.find("failed") != -1:
                 fails.append(dataRef)
         return fails
@@ -252,14 +263,14 @@ class LogBrowser:
             log = self.logs[dataRef]
             if full:  # print the whole thing
                 for line in log:
-                    self._printLineIf.print(line)
+                    self._printLineIf(line)
             else:
                 # print the last line from the Exception onwards if found,
                 # failing over to printing the whole thing just in case.
                 msg = log[-1].message
-                parts = msg.split("Exception ")
-                if len(parts) == 2:
-                    print(parts[1])
+                head, sep, tail = msg.partition("Exception ")
+                if sep:
+                    print(tail)
                 else:
                     print(msg)
 
@@ -280,12 +291,12 @@ class LogBrowser:
         for dataRef in fails:
             log = self.logs[dataRef]
             msg = log[-1].message  # log[-1].message is the text of the last line of the log
-            parts = msg.split("Exception ")
-            if len(parts) != 2:  # pretty sure all fails contain one and only one 'Exception' but be safe
+            head, sep, tail = msg.partition("Exception ")
+            if not sep:
                 self.log.warning(f"Surprise parsing log for {dataRef.dataId}")
                 continue
             else:
-                error = parts[1]
+                error = tail
                 for error_string in self.SPECIAL_ZOO_CASES:
                     if error.find(error_string) != -1:
                         error = error.split(error_string)[0] + error_string + "..."
@@ -300,7 +311,7 @@ class LogBrowser:
         if not giveExampleId:
             if zoo.values():
                 maxCount = max([v for v in zoo.values()])
-                pad = math.ceil(math.log10(maxCount))  # number of digits in the largest count
+                pad = len(str(maxCount))  # number of digits in the largest count
 
         for error in sorted(zoo.keys()):
             count = zoo[error]
@@ -333,8 +344,8 @@ class LogBrowser:
                 self._printLineIf(line)
         else:
             msg = log[-1].message  # log[-1].message is the text of the last line of the log
-            parts = msg.split("Exception ")
-            if len(parts) == 2:
-                print(parts[1])
+            head, sep, tail = msg.partition("Exception ")
+            if sep:
+                print(tail)
             else:
                 print(msg)

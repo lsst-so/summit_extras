@@ -101,19 +101,21 @@ class AssessQFM:
         }
 
     def run(self, nSamples: int | None = None, nProcesses: int = 1, outputFile: str | None = None) -> None:
-        """Run quickFrameMeasurement on a sample dataset, save the new results,
-        and compare them with the baseline, vetted by-eye results.
+        """Run quickFrameMeasurement on a sample dataset and compare the
+        new results with the baseline, by-eye vetted results.
 
         Parameters
         ----------
-        nSamples : `int`
-            Number of exposures to check. If nSamples is greater than the
-            number of exposures in the vetted dataset, will check all.
-        nProcesses : `int`
-            Number of threads to use. If greater than one, multithreading will
-            be used.
-        outputFile : `str`
-            Name of the output file.
+        nSamples : `int`, optional
+            Number of exposures to check. If greater than the number of
+            exposures in the vetted dataset, all will be checked. If
+            `None` (default), all exposures are checked.
+        nProcesses : `int`, optional
+            Number of worker processes to use. If greater than one,
+            multiprocessing is used.
+        outputFile : `str`, optional
+            If provided, write the new QuickFrameMeasurement results to
+            this Parquet file.
         """
 
         if nSamples is not None:
@@ -160,21 +162,20 @@ class AssessQFM:
             }
 
             exp = self.butler.get(self.dataProduct, dataId=dataId)
-            qfmRes = qfmResults.loc[i]
 
             t1 = time.time()
             result = self.qfmTask.run(exp)
             t2 = time.time()
-            qfmRes["runtime"] = t2 - t1
+            qfmResults.at[i, "runtime"] = t2 - t1
 
             if result.success:
                 pixCoord = result.brightestObjCentroid
-                qfmRes["centroid_x"] = pixCoord[0]
-                qfmRes["centroid_y"] = pixCoord[1]
-                qfmRes["finalTag"] = "P"
+                qfmResults.at[i, "centroid_x"] = pixCoord[0]
+                qfmResults.at[i, "centroid_y"] = pixCoord[1]
+                qfmResults.at[i, "finalTag"] = "P"
 
             else:
-                qfmRes["finalTag"] = "F"
+                qfmResults.at[i, "finalTag"] = "F"
         return qfmResults
 
     def compareToBaseline(self, comparisonData: pd.DataFrame) -> None:

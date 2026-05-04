@@ -41,24 +41,25 @@ from lsst.summit.utils.butlerUtils import (
 
 
 class Monitor:
-    """Create a monitor for AuxTel.
+    """Real-time AuxTel display driver.
 
-    Scans the butler repo for new images and sends each one, after running
-    bestEffortIsr, to the display.
-
-    Now largely superceded by RubinTV.
+    Scans the butler repo for new images and sends each one, after
+    running bestEffortIsr, to a Firefly display. Largely superseded by
+    RubinTV and retained mainly for engineering workflows.
 
     Parameters
-    -------
+    ----------
     fireflyDisplay : `lsst.afw.display.Display`
-        A Firefly display instance.
+        A Firefly display instance to mtv images to.
+    **kwargs
+        Additional keyword arguments forwarded to
+        `lsst.summit.utils.bestEffort.BestEffortIsr`.
     """
 
     cadence = 1  # in seconds
     runIsr = True
 
     def __init__(self, fireflyDisplay: afwDisplay, **kwargs: Any):
-        """"""
         self.butler = makeDefaultLatissButler()
         self.display = fireflyDisplay
         self.bestEffort = BestEffortIsr(**kwargs)
@@ -66,13 +67,34 @@ class Monitor:
         self.overlayAmps = False  # do the overlay?
         self.measureFromChipCenter = False
 
-    def _getLatestImageDataIdAndExpId(self) -> tuple:
-        """Get the dataId and expId for the most recent image in the repo."""
+    def _getLatestImageDataIdAndExpId(self) -> tuple[dict, int]:
+        """Return the dataId and expId of the most recent raw image.
+
+        Returns
+        -------
+        dataId : `dict`
+            The most recent raw dataId in the butler repo.
+        expId : `int`
+            The corresponding exposure id.
+        """
         dataId = getMostRecentDataId(self.butler)
         expId = getExpIdFromDayObsSeqNum(self.butler, dataId)["exposure"]
         return dataId, expId
 
     def _calcImageStats(self, exp: afwImage.Exposure) -> list[str]:
+        """Compute a short set of image statistic strings.
+
+        Parameters
+        ----------
+        exp : `lsst.afw.image.Exposure`
+            The exposure to summarise.
+
+        Returns
+        -------
+        elements : `list` [`str`]
+            Human-readable statistic lines (median, mean) for overlay
+            on the display.
+        """
         elements = []
         median = np.median(exp.image.array)
         elements.append(f"Median={median:.2f}")
@@ -83,6 +105,24 @@ class Monitor:
         return elements
 
     def _makeImageInfoText(self, dataId: dict, exp: afwImage.Exposure, asList: bool = False) -> list | str:
+        """Build the overlay text describing a displayed exposure.
+
+        Parameters
+        ----------
+        dataId : `dict`
+            The dataId for the exposure.
+        exp : `lsst.afw.image.Exposure`
+            The exposure being displayed.
+        asList : `bool`, optional
+            If `True` return a list of lines suitable for individual
+            placement on the display. Otherwise return a single
+            space-joined string suitable for a window title.
+
+        Returns
+        -------
+        info : `list` [`str`] or `str`
+            The assembled info text.
+        """
         # TODO: add the following to the display:
         # az, el, zenith angle
         # main source centroid
@@ -122,7 +162,15 @@ class Monitor:
             return elements
         return " ".join([e for e in elements])
 
-    def _printImageInfo(self, elements: list) -> None:
+    def _printImageInfo(self, elements: list[str]) -> None:
+        """Stamp info text lines onto the current display.
+
+        Parameters
+        ----------
+        elements : `list` [`str`]
+            Lines of overlay text to place on the display, stacked
+            vertically just below the title bar.
+        """
         size = 3
         top = 3850  # just under title for size=3
         xnom = -600  # 0 is the left edge of the image
@@ -138,10 +186,14 @@ class Monitor:
     def run(self, durationInSeconds: int = -1) -> None:
         """Run the monitor, displaying new images as they are taken.
 
+        Polls the butler repo at ``self.cadence`` seconds and pushes
+        each newly seen exposure to the Firefly display, optionally
+        running bestEffortIsr first.
+
         Parameters
         ----------
         durationInSeconds : `int`, optional
-            How long to run for. Use -1 for infinite.
+            How long to run for. Use ``-1`` to run effectively forever.
         """
 
         if durationInSeconds == -1:
@@ -181,9 +233,11 @@ class Monitor:
                 if self.overlayAmps:
                     cgUtils.overlayCcdBoxes(exp.getDetector(), display=self.display, isTrimmed=True)
 
+                assert isinstance(imageInfoText, list)
                 self._printImageInfo(imageInfoText)
                 lastDisplayed = expId
 
             except NotFoundError as e:  # NotFoundError when filters aren't defined
-                print(f"Skipped displaying {dataId} due to {e}")
+                print(f"Skipped displaying due to {e}")
+            sleep(self.cadence)
         return

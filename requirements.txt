@@ -1,0 +1,7 @@
+pydantic
+numpy>=2.0
+matplotlib
+lsst-utils
+lsst-daf-butler
+lsst-resources
+summit_utils @ git+https://github.com/lsst-sitcom/summit_utils@main

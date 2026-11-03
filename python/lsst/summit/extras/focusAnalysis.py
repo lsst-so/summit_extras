@@ -22,7 +22,6 @@
 from dataclasses import dataclass
 
 import matplotlib
-import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec
@@ -155,7 +154,7 @@ class SpectralFocusAnalyzer:
         nPoints : `int`
             Number of colors to sample from the ``rainbow`` colormap.
         """
-        self.COLORS = cm.get_cmap("rainbow")(np.linspace(0, 1, nPoints))
+        self.COLORS = matplotlib.colormaps["rainbow"](np.linspace(0, 1, nPoints))
 
     def _getBboxes(self, centroid: list[float]) -> list[geom.Box2I]:
         """Build the spectrum-slice bounding boxes for this centroid.

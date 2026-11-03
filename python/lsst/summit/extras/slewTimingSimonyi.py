@@ -483,6 +483,7 @@ def plotExposureTiming(
             prePadding=prePadding,
             postPadding=postPadding,
             warn=False,
+            raiseIfTopicNotInSchema=False,
         )
         for time, data in inPositionTransitions.iterrows():
             inPosition = data["inPosition"]
@@ -547,6 +548,7 @@ def plotExposureTiming(
                 prePadding=prePadding,
                 postPadding=postPadding,
                 warn=False,
+                raiseIfTopicNotInSchema=False,
             )
             commandTimes.update({time: topic for time, _ in hexData.iterrows()})
         except ValueError:
